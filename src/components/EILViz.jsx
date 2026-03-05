@@ -244,14 +244,14 @@ function TransectChart({ data }) {
   const transect = data._viz_transect;
   const metrics = data.metrics;
 
-  const PAD = { top: 15, right: 15, bottom: 35, left: 45 };
+  const PAD = { top: 20, right: 20, bottom: 20, left: 10 };
 
   const elevs = transect.map(p => p.elev_m);
   let rawMinE = elevs.length > 0 ? Math.min(...elevs) : 0;
   let rawMaxE = elevs.length > 0 ? Math.max(...elevs) : 100;
   if (rawMinE === rawMaxE) { rawMinE -= 10; rawMaxE += 10; }
-  const minE = Math.floor(rawMinE) - 5;
-  const maxE = Math.ceil(rawMaxE) + 5;
+  const minE = Math.floor(rawMinE) - 10;
+  const maxE = Math.ceil(rawMaxE) + 10;
   const maxDist = metrics.horizontal_distance_h;
 
   useEffect(() => {
@@ -292,13 +292,13 @@ function TransectChart({ data }) {
     ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.lineWidth = 1;
 
-    const yTicks = 4;
+    const yTicks = 3;
     for (let i = 0; i <= yTicks; i++) {
       const y = PAD.top + (i / yTicks) * chartH;
       ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(cw - PAD.right, y); ctx.stroke();
     }
 
-    const xTicks = 5;
+    const xTicks = 4;
     for (let i = 0; i <= xTicks; i++) {
       const x = PAD.left + (i / xTicks) * chartW;
       ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, ch - PAD.bottom); ctx.stroke();
@@ -388,39 +388,35 @@ function TransectChart({ data }) {
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(PAD.left, ch - PAD.bottom); ctx.lineTo(cw - PAD.right, ch - PAD.bottom); ctx.stroke();
 
-    // Y axis labels
+    // Y axis labels (drawn inside the chart due to small left padding)
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "right";
+    ctx.textAlign = "left";
     for (let i = 0; i <= yTicks; i++) {
       const e = minE + ((maxE - minE) * (yTicks - i)) / yTicks;
       const y = PAD.top + (i / yTicks) * chartH;
-      ctx.fillText(`${Math.round(e)}m`, PAD.left - 6, y + 4);
+      ctx.fillText(`${Math.round(e)}m`, PAD.left + 4, y - 4);
     }
 
     // X axis labels
-    ctx.textAlign = "center";
     for (let i = 0; i <= xTicks; i++) {
       const d = (maxDist / xTicks) * i;
       const x = PAD.left + (i / xTicks) * chartW;
+      if (i === 0) ctx.textAlign = "left";
+      else if (i === xTicks) ctx.textAlign = "right";
+      else ctx.textAlign = "center";
       ctx.fillText(`${Math.round(d)}m`, x, ch - PAD.bottom + 14);
     }
     ctx.textAlign = "left";
 
     // Axis titles
-    ctx.save();
-    ctx.translate(14, ch / 2);
-    ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("ELEVATION (m)", 0, 0);
-    ctx.restore();
+    ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("ELEVATION", PAD.left + 4, PAD.top + 14);
 
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("HORIZONTAL DISTANCE FROM PEAK (m)", PAD.left + chartW / 2, ch - 4);
+    ctx.fillText("DISTANCE FROM PEAK", PAD.left + chartW / 2, ch - 4);
     ctx.textAlign = "left";
   }, [transect, metrics, minE, maxE, PAD, dims]);
 
