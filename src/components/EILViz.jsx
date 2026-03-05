@@ -81,60 +81,102 @@ function SlopeHeatmap({ data }) {
     const ctx = canvas.getContext("2d");
     const cw = canvas.width;
     const ch = canvas.height;
-    const cellW = cw / cols;
-    const cellH = ch / rows;
 
-    ctx.clearRect(0, 0, cw, ch);
-
+    let minR = rows, maxR = 0, minC = cols, maxC = 0;
+    let hasData = false;
     grid.forEach((row, r) => {
       row.forEach((val, c) => {
         if (val !== null) {
-          ctx.fillStyle = slopeColor(val);
-          ctx.fillRect(c * cellW, r * cellH, cellW + 1, cellH + 1);
+          hasData = true;
+          if (r < minR) minR = r;
+          if (r > maxR) maxR = r;
+          if (c < minC) minC = c;
+          if (c > maxC) maxC = c;
         }
       });
     });
 
-    // Parcel outline
+    if (!hasData) {
+      ctx.clearRect(0, 0, cw, ch);
+      return;
+    }
+
+    minR = Math.max(0, minR - 1);
+    maxR = Math.min(rows - 1, maxR + 1);
+    minC = Math.max(0, minC - 1);
+    maxC = Math.min(cols - 1, maxC + 1);
+
+    const activeRows = maxR - minR + 1;
+    const activeCols = maxC - minC + 1;
+    const cellW = cw / activeCols;
+    const cellH = ch / activeRows;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const val = grid[r][c];
+        if (val !== null) {
+          ctx.fillStyle = slopeColor(val);
+          ctx.fillRect((c - minC) * cellW, (r - minR) * cellH, cellW + 1, cellH + 1);
+        }
+      }
+    }
+
     ctx.strokeStyle = "rgba(255,255,255,0.7)";
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, cw - 2, ch - 2);
 
-    // Grid lines (subtle)
     ctx.strokeStyle = "rgba(0,0,0,0.12)";
     ctx.lineWidth = 0.5;
-    for (let r = 1; r < rows; r++) {
+    for (let r = 1; r < activeRows; r++) {
       ctx.beginPath(); ctx.moveTo(0, r * cellH); ctx.lineTo(cw, r * cellH); ctx.stroke();
     }
-    for (let c = 1; c < cols; c++) {
+    for (let c = 1; c < activeCols; c++) {
       ctx.beginPath(); ctx.moveTo(c * cellW, 0); ctx.lineTo(c * cellW, ch); ctx.stroke();
     }
 
-    // Highlight the max-slope cell
-    let maxVal = -Infinity, maxR = 0, maxC = 0;
-    grid.forEach((row, r) => row.forEach((v, c) => { if (v !== null && v > maxVal) { maxVal = v; maxR = r; maxC = c; } }));
+    let maxVal = -Infinity, maxValR = 0, maxValC = 0;
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const v = grid[r][c];
+        if (v !== null && v > maxVal) { maxVal = v; maxValR = r; maxValC = c; }
+      }
+    }
     if (maxVal !== -Infinity) {
       ctx.strokeStyle = "rgba(255,255,255,0.95)";
       ctx.lineWidth = 2.5;
-      ctx.strokeRect(maxC * cellW + 1, maxR * cellH + 1, cellW - 2, cellH - 2);
+      ctx.strokeRect((maxValC - minC) * cellW + 1, (maxValR - minR) * cellH + 1, cellW - 2, cellH - 2);
     }
 
-    // Compass rose (NW corner label)
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "bold 10px 'Courier New'";
-    ctx.fillText("N↑", 6, 14);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText("N↑", 8, 16);
+
+    canvasRef.current._geoMap = { minR, minC, cellW, cellH, maxR, maxC };
   }, [grid, rows, cols]);
 
   useEffect(() => { draw(); }, [draw]);
 
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
+    const map = canvas?._geoMap;
+    if (!map) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const c = Math.floor(x / (canvas.width / cols));
-    const r = Math.floor(y / (canvas.height / rows));
-    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const logicalX = x * scaleX;
+    const logicalY = y * scaleY;
+
+    const cOffset = Math.floor(logicalX / map.cellW);
+    const rOffset = Math.floor(logicalY / map.cellH);
+    const c = map.minC + cOffset;
+    const r = map.minR + rOffset;
+
+    if (r >= map.minR && r <= map.maxR && c >= map.minC && c <= map.maxC && r >= 0 && r < rows && c >= 0 && c < cols) {
       const val = grid[r][c];
       if (val !== null) {
         setHovered({ r, c, val, x: e.clientX, y: e.clientY });
@@ -147,12 +189,12 @@ function SlopeHeatmap({ data }) {
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
       <canvas
         ref={canvasRef}
         width={380}
         height={380}
-        style={{ display: "block", cursor: "crosshair", borderRadius: 4 }}
+        style={{ cursor: "crosshair", borderRadius: 4, maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHovered(null)}
       />
@@ -194,24 +236,43 @@ function SlopeLegend() {
 
 // ─── Depositional Transect Chart ──────────────────────────────────────────────
 function TransectChart({ data }) {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [hovered, setHovered] = useState(null);
+  const [dims, setDims] = useState({ w: 560, h: 320 });
 
   const transect = data._viz_transect;
   const metrics = data.metrics;
 
-  const PAD = { top: 32, right: 28, bottom: 52, left: 64 };
+  const PAD = { top: 15, right: 15, bottom: 35, left: 45 };
 
   const elevs = transect.map(p => p.elev_m);
-  const minE = Math.min(...elevs) - 20;
-  const maxE = Math.max(...elevs) + 30;
+  let rawMinE = elevs.length > 0 ? Math.min(...elevs) : 0;
+  let rawMaxE = elevs.length > 0 ? Math.max(...elevs) : 100;
+  if (rawMinE === rawMaxE) { rawMinE -= 10; rawMaxE += 10; }
+  const minE = Math.floor(rawMinE) - 5;
+  const maxE = Math.ceil(rawMaxE) + 5;
   const maxDist = metrics.horizontal_distance_h;
 
-  const toCanvas = (canvas, dist, elev) => {
-    const cw = canvas.width - PAD.left - PAD.right;
-    const ch = canvas.height - PAD.top - PAD.bottom;
-    const x = PAD.left + (dist / maxDist) * cw;
-    const y = PAD.top + ch - ((elev - minE) / (maxE - minE)) * ch;
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setDims({
+          w: entry.contentRect.width,
+          h: entry.contentRect.height
+        });
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const toCanvas = (cw, ch, dist, elev) => {
+    const chartW = cw - PAD.left - PAD.right;
+    const chartH = ch - PAD.top - PAD.bottom;
+    const x = PAD.left + (dist / maxDist) * chartW;
+    const y = PAD.top + chartH - ((elev - minE) / (maxE - minE)) * chartH;
     return [x, y];
   };
 
@@ -225,23 +286,28 @@ function TransectChart({ data }) {
 
     const chartW = cw - PAD.left - PAD.right;
     const chartH = ch - PAD.top - PAD.bottom;
+    if (chartW <= 0 || chartH <= 0) return;
 
     // Background grid
     ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const y = PAD.top + (i / 5) * chartH;
+
+    const yTicks = 4;
+    for (let i = 0; i <= yTicks; i++) {
+      const y = PAD.top + (i / yTicks) * chartH;
       ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(cw - PAD.right, y); ctx.stroke();
     }
-    for (let i = 0; i <= 6; i++) {
-      const x = PAD.left + (i / 6) * chartW;
+
+    const xTicks = 5;
+    for (let i = 0; i <= xTicks; i++) {
+      const x = PAD.left + (i / xTicks) * chartW;
       ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, ch - PAD.bottom); ctx.stroke();
     }
 
     // ── Runout zone band ──
-    const runoutDist = metrics.required_runout_3x; // 510m from peak
-    const [rx0] = toCanvas(canvas, 0, 0);
-    const [rx1] = toCanvas(canvas, runoutDist, 0);
+    const runoutDist = metrics.required_runout_3x;
+    const [rx0] = toCanvas(cw, ch, 0, 0);
+    const [rx1] = toCanvas(cw, ch, runoutDist, 0);
     ctx.fillStyle = "rgba(220,60,60,0.10)";
     ctx.fillRect(rx0, PAD.top, rx1 - rx0, chartH);
     ctx.strokeStyle = "rgba(220,60,60,0.55)";
@@ -250,19 +316,19 @@ function TransectChart({ data }) {
     ctx.beginPath(); ctx.moveTo(rx1, PAD.top); ctx.lineTo(rx1, ch - PAD.bottom); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(220,60,60,0.85)";
-    ctx.font = "10px 'Courier New'";
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
     ctx.fillText("3×ΔE limit", rx1 + 4, PAD.top + 14);
 
     // ── Terrain fill ──
     ctx.beginPath();
-    const [x0, y0] = toCanvas(canvas, transect[0].dist_m, transect[0].elev_m);
+    const [x0, y0] = toCanvas(cw, ch, transect[0].dist_m, transect[0].elev_m);
     ctx.moveTo(x0, ch - PAD.bottom);
     ctx.lineTo(x0, y0);
     transect.forEach(pt => {
-      const [px, py] = toCanvas(canvas, pt.dist_m, pt.elev_m);
+      const [px, py] = toCanvas(cw, ch, pt.dist_m, pt.elev_m);
       ctx.lineTo(px, py);
     });
-    const [xlast] = toCanvas(canvas, transect[transect.length - 1].dist_m, transect[transect.length - 1].elev_m);
+    const [xlast] = toCanvas(cw, ch, transect[transect.length - 1].dist_m, transect[transect.length - 1].elev_m);
     ctx.lineTo(xlast, ch - PAD.bottom);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, PAD.top, 0, ch - PAD.bottom);
@@ -274,7 +340,7 @@ function TransectChart({ data }) {
     // ── Terrain line ──
     ctx.beginPath();
     transect.forEach((pt, i) => {
-      const [px, py] = toCanvas(canvas, pt.dist_m, pt.elev_m);
+      const [px, py] = toCanvas(cw, ch, pt.dist_m, pt.elev_m);
       i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
     });
     ctx.strokeStyle = "rgba(100,220,150,0.95)";
@@ -282,40 +348,39 @@ function TransectChart({ data }) {
     ctx.stroke();
 
     // ── Peak marker ──
-    const [px, py] = toCanvas(canvas, 0, metrics.elevation_peak);
+    const [px, py] = toCanvas(cw, ch, 0, metrics.elevation_peak);
     ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
     ctx.fillStyle = "#f87171"; ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#f87171";
-    ctx.font = "bold 10px 'Courier New'";
-    ctx.fillText(`▲ PEAK ${metrics.elevation_peak}m`, px + 8, py + 4);
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`▲ PEAK ${Math.round(metrics.elevation_peak)}m`, px + 8, py + 4);
 
     // ── Site marker ──
-    const [sx, sy] = toCanvas(canvas, metrics.horizontal_distance_h, metrics.elevation_site);
+    const [sx, sy] = toCanvas(cw, ch, metrics.horizontal_distance_h, metrics.elevation_site);
     ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2);
     ctx.fillStyle = "#60a5fa"; ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#60a5fa";
-    ctx.font = "bold 10px 'Courier New'";
-    ctx.fillText(`◆ SITE ${metrics.elevation_site}m`, sx - 90, sy - 10);
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`◆ SITE ${Math.round(metrics.elevation_site)}m`, sx - 95, sy - 10);
 
     // ── H distance arrow ──
-    const arrowY = ch - PAD.bottom + 24;
+    const arrowY = ch - PAD.bottom + 20;
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(px, arrowY); ctx.lineTo(sx, arrowY); ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,0.5)";
-    // arrowheads
     [[px, -1], [sx, 1]].forEach(([ax, dir]) => {
       ctx.beginPath(); ctx.moveTo(ax, arrowY);
       ctx.lineTo(ax + dir * 7, arrowY - 4);
       ctx.lineTo(ax + dir * 7, arrowY + 4);
       ctx.closePath(); ctx.fill();
     });
-    ctx.font = "10px 'Courier New'";
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "center";
-    ctx.fillText(`H = ${metrics.horizontal_distance_h}m`, (px + sx) / 2, arrowY - 6);
+    ctx.fillText(`H = ${Math.round(metrics.horizontal_distance_h)}m`, (px + sx) / 2, arrowY - 4);
     ctx.textAlign = "left";
 
     // ── Axes ──
@@ -325,20 +390,20 @@ function TransectChart({ data }) {
 
     // Y axis labels
     ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.font = "10px 'Courier New'";
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "right";
-    for (let i = 0; i <= 5; i++) {
-      const e = minE + ((maxE - minE) * (5 - i)) / 5;
-      const y = PAD.top + (i / 5) * chartH;
+    for (let i = 0; i <= yTicks; i++) {
+      const e = minE + ((maxE - minE) * (yTicks - i)) / yTicks;
+      const y = PAD.top + (i / yTicks) * chartH;
       ctx.fillText(`${Math.round(e)}m`, PAD.left - 6, y + 4);
     }
 
     // X axis labels
     ctx.textAlign = "center";
-    for (let i = 0; i <= 6; i++) {
-      const d = (maxDist / 6) * i;
-      const x = PAD.left + (i / 6) * chartW;
-      ctx.fillText(`${Math.round(d)}m`, x, ch - PAD.bottom + 16);
+    for (let i = 0; i <= xTicks; i++) {
+      const d = (maxDist / xTicks) * i;
+      const x = PAD.left + (i / xTicks) * chartW;
+      ctx.fillText(`${Math.round(d)}m`, x, ch - PAD.bottom + 14);
     }
     ctx.textAlign = "left";
 
@@ -347,22 +412,23 @@ function TransectChart({ data }) {
     ctx.translate(14, ch / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "10px 'Courier New'";
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("ELEVATION (m)", 0, 0);
     ctx.restore();
 
     ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "10px 'Courier New'";
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("HORIZONTAL DISTANCE FROM PEAK (m)", PAD.left + chartW / 2, ch - 6);
+    ctx.fillText("HORIZONTAL DISTANCE FROM PEAK (m)", PAD.left + chartW / 2, ch - 4);
     ctx.textAlign = "left";
-  }, [transect, metrics]);
+  }, [transect, metrics, minE, maxE, PAD, dims]);
 
   useEffect(() => { draw(); }, [draw]);
 
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const chartW = canvas.width - PAD.left - PAD.right;
@@ -374,20 +440,20 @@ function TransectChart({ data }) {
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={containerRef} style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0 }}>
       <canvas
         ref={canvasRef}
-        width={560}
-        height={320}
-        style={{ display: "block", cursor: "crosshair" }}
+        width={dims.w}
+        height={dims.h}
+        style={{ cursor: "crosshair", display: "block" }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHovered(null)}
       />
       {hovered && (
         <div className="map-tooltip" style={{ left: hovered.mouseX + 10, top: hovered.mouseY - 40 }}>
           <span className="tt-label">Distance</span>
-          <span className="tt-val">{hovered.dist_m}m</span>
-          <span className="tt-sub">Elev: {hovered.elev_m}m</span>
+          <span className="tt-val">{Math.round(hovered.dist_m)}m</span>
+          <span className="tt-sub">Elev: {Math.round(hovered.elev_m)}m</span>
         </div>
       )}
     </div>
@@ -421,11 +487,12 @@ export default function EILViz({ data }) {
         body { background: #0b0f14; }
 
         .app {
-          min-height: 100vh;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
           background: #0b0f14;
           color: #d4dbe8;
           font-family: 'DM Sans', sans-serif;
-          padding: 0 0 48px;
         }
 
         /* ── Header ── */
@@ -441,7 +508,7 @@ export default function EILViz({ data }) {
           background: rgba(220,60,60,0.15);
           border: 1px solid rgba(220,60,60,0.35);
           color: #f87171;
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 2px;
@@ -449,7 +516,7 @@ export default function EILViz({ data }) {
           border-radius: 3px;
         }
         .header-title {
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 13px;
           font-weight: 700;
           letter-spacing: 1.5px;
@@ -459,7 +526,7 @@ export default function EILViz({ data }) {
         .header-sub {
           font-size: 11px;
           color: rgba(255,255,255,0.35);
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           margin-top: 2px;
         }
         .header-status {
@@ -474,7 +541,7 @@ export default function EILViz({ data }) {
         .badge-review { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.4); color: #fbbf24; }
         .badge-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #f87171; }
         .status-badge {
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 1px;
@@ -497,7 +564,7 @@ export default function EILViz({ data }) {
           border-bottom: 2px solid transparent;
           color: rgba(255,255,255,0.35);
           cursor: pointer;
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 11px;
           letter-spacing: 1.2px;
           padding: 14px 20px 12px;
@@ -514,10 +581,13 @@ export default function EILViz({ data }) {
 
         /* ── Content area ── */
         .content {
-          padding: 28px 32px;
+          padding: 16px 24px;
           display: flex;
-          gap: 28px;
-          align-items: flex-start;
+          gap: 20px;
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          align-items: stretch;
         }
 
         /* ── Panel ── */
@@ -525,54 +595,65 @@ export default function EILViz({ data }) {
           background: rgba(255,255,255,0.028);
           border: 1px solid rgba(255,255,255,0.07);
           border-radius: 6px;
-          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
         .panel-header {
-          padding: 12px 16px;
+          padding: 10px 14px;
           border-bottom: 1px solid rgba(255,255,255,0.06);
-          font-family: 'Space Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 1.5px;
-          color: rgba(255,255,255,0.35);
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 1px;
+          color: rgba(255,255,255,0.5);
           text-transform: uppercase;
           display: flex; align-items: center; justify-content: space-between;
+          flex-shrink: 0;
         }
-        .panel-body { padding: 16px; }
+        .panel-body { 
+          padding: 12px; 
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
 
         /* ── Metrics grid ── */
         .metrics-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 10px;
+          gap: 12px;
           margin-bottom: 16px;
         }
         .metric-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 4px;
-          padding: 10px 12px;
+          padding: 8px 10px;
         }
         .metric-card.metric-highlight {
-          border-color: rgba(251,191,36,0.3);
-          background: rgba(251,191,36,0.04);
+          border-color: rgba(251,191,36,0.4);
+          background: rgba(251,191,36,0.08);
         }
         .metric-label {
-          font-family: 'Space Mono', monospace;
-          font-size: 9px;
-          letter-spacing: 1px;
-          color: rgba(255,255,255,0.3);
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.6);
           text-transform: uppercase;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         .metric-value {
-          font-family: 'Space Mono', monospace;
-          font-size: 20px;
-          font-weight: 700;
-          color: #e2e8f0;
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 26px;
+          font-weight: 800;
+          color: #ffffff;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.6);
         }
         .metric-unit {
-          font-size: 11px;
-          color: rgba(255,255,255,0.4);
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.6);
           margin-left: 3px;
         }
 
@@ -590,7 +671,7 @@ export default function EILViz({ data }) {
           position: relative;
           height: 24px;
           margin-top: 2px;
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 8.5px;
           color: rgba(255,255,255,0.4);
         }
@@ -603,19 +684,20 @@ export default function EILViz({ data }) {
         /* ── Tooltip ── */
         .map-tooltip {
           position: absolute;
-          background: rgba(10,16,24,0.95);
-          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid #ccc;
           border-radius: 4px;
-          padding: 6px 10px;
+          padding: 6px 12px;
           pointer-events: none;
           display: flex;
           flex-direction: column;
-          gap: 1px;
+          gap: 2px;
           z-index: 10;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
-        .tt-label { font-family: 'Space Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; }
-        .tt-val { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; color: #e2e8f0; }
-        .tt-sub { font-size: 10px; color: rgba(255,255,255,0.3); }
+        .tt-label { font-family: system-ui, -apple-system, sans-serif; font-size: 10px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; }
+        .tt-val { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: 800; color: #000; }
+        .tt-sub { font-size: 11px; font-weight: 500; color: #666; }
 
         /* ── Runout fact box ── */
         .runout-box {
@@ -624,7 +706,7 @@ export default function EILViz({ data }) {
           border-radius: 4px;
           padding: 10px 14px;
           margin-top: 12px;
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 10px;
           color: #4ade80;
           line-height: 1.7;
@@ -661,7 +743,7 @@ export default function EILViz({ data }) {
           gap: 16px;
           background: rgba(255,255,255,0.015);
           border-bottom: 1px solid rgba(255,255,255,0.05);
-          font-family: 'Space Mono', monospace;
+          font-family: system-ui, -apple-system, sans-serif;
           font-size: 9px;
           letter-spacing: 1px;
           color: rgba(255,255,255,0.25);
@@ -673,7 +755,7 @@ export default function EILViz({ data }) {
         /* ── Source chip ── */
         .source-chip {
           display: inline-flex; align-items: center; gap: 5px;
-          font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px;
+          font-family: system-ui, -apple-system, sans-serif; font-size: 9px; letter-spacing: 1px;
           color: rgba(255,255,255,0.35);
           background: rgba(255,255,255,0.04);
           border: 1px solid rgba(255,255,255,0.08);
