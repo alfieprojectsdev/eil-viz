@@ -241,7 +241,14 @@ function TransectChart({ data }) {
   const [hovered, setHovered] = useState(null);
   const [dims, setDims] = useState({ w: 560, h: 320 });
 
-  const transect = data._viz_transect;
+  const rawTransect = data._viz_transect || [];
+  let lastValidE = rawTransect.find(p => p.elev_m <= 5000)?.elev_m || 0;
+  const transect = rawTransect.map(pt => {
+    let e = pt.elev_m;
+    if (e > 5000) e = lastValidE;
+    else lastValidE = e;
+    return { ...pt, elev_m: e };
+  });
   const metrics = data.metrics;
 
   const PAD = { top: 20, right: 20, bottom: 20, left: 10 };
