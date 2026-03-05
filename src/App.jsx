@@ -20,8 +20,18 @@ function App() {
         throw new Error("Invalid JSON format")
       }
 
-      // If it's a Feature, extract geometry, otherwise assume it's already a Geometry
-      const geometry = parsedGeoJson.type === "Feature" ? parsedGeoJson.geometry : parsedGeoJson;
+      // Extract the bare geometry depending on the GeoJSON type
+      let geometry;
+      if (parsedGeoJson.type === "FeatureCollection") {
+        if (!parsedGeoJson.features || parsedGeoJson.features.length === 0) {
+          throw new Error("FeatureCollection is empty")
+        }
+        geometry = parsedGeoJson.features[0].geometry;
+      } else if (parsedGeoJson.type === "Feature") {
+        geometry = parsedGeoJson.geometry;
+      } else {
+        geometry = parsedGeoJson;
+      }
 
       const response = await fetch("http://127.0.0.1:8000/api/v1/assess", {
         method: "POST",
