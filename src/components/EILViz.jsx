@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
 // https://claude.ai/share/979250ce-03c9-4459-b1bf-095a3b49ed07
 // ─── Mock backend data (matches your real JSON output schema) ───────────────
 const MOCK_RESULT = {
@@ -68,7 +69,6 @@ function statusBadge(status) {
 // ─── Slope Heatmap ────────────────────────────────────────────────────────────
 function SlopeHeatmap({ data }) {
   const canvasRef = useRef(null);
-  const tooltipRef = useRef(null);
   const [hovered, setHovered] = useState(null);
 
   const grid = data._viz_grid;
@@ -179,7 +179,7 @@ function SlopeHeatmap({ data }) {
     if (r >= map.minR && r <= map.maxR && c >= map.minC && c <= map.maxC && r >= 0 && r < rows && c >= 0 && c < cols) {
       const val = grid[r][c];
       if (val !== null) {
-        setHovered({ r, c, val, x: e.clientX, y: e.clientY });
+        setHovered({ r, c, val, x, y });
       } else {
         setHovered(null);
       }
@@ -199,7 +199,7 @@ function SlopeHeatmap({ data }) {
         onMouseLeave={() => setHovered(null)}
       />
       {hovered && (
-        <div className="map-tooltip" style={{ left: hovered.x - canvasRef.current?.getBoundingClientRect().left + 12, top: hovered.y - canvasRef.current?.getBoundingClientRect().top - 36 }}>
+        <div className="map-tooltip" style={{ left: hovered.x + 12, top: hovered.y - 36 }}>
           <span className="tt-label">Slope</span>
           <span className="tt-val">{hovered.val.toFixed(1)}°</span>
           <span className="tt-sub">pixel [{hovered.r},{hovered.c}]</span>
@@ -234,231 +234,93 @@ function SlopeLegend() {
   );
 }
 
-// ─── Depositional Transect Chart ──────────────────────────────────────────────
+// ─── Depositional Transect Chart (Recharts) ───────────────────────────────────
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const ptData = payload[0].payload;
+    return (
+      <div className="map-tooltip" style={{ pointerEvents: 'none' }}>
+        <span className="tt-label">Distance</span>
+        <span className="tt-val">{Math.round(ptData.dist_m)}m</span>
+        <span className="tt-sub">Elev: {Math.round(ptData.elev_m)}m</span>
+      </div>
+    );
+  }
+  return null;
+};
+
 function TransectChart({ data }) {
-  const containerRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [hovered, setHovered] = useState(null);
-  const [dims, setDims] = useState({ w: 560, h: 320 });
-
   const rawTransect = data._viz_transect || [];
-  let lastValidE = rawTransect.find(p => p.elev_m <= 5000)?.elev_m || 0;
-  const transect = rawTransect.map(pt => {
-    let e = pt.elev_m;
-    if (e > 5000) e = lastValidE;
-    else lastValidE = e;
-    return { ...pt, elev_m: e };
-  });
-  const metrics = data.metrics;
+  const initialValidE = rawTransect.find(p => p.elev_m <= 5000)?.elev_m || 0;
 
-  const PAD = { top: 20, right: 20, bottom: 20, left: 10 };
-
-  const elevs = transect.map(p => p.elev_m);
-  let rawMinE = elevs.length > 0 ? Math.min(...elevs) : 0;
-  let rawMaxE = elevs.length > 0 ? Math.max(...elevs) : 100;
-  if (rawMinE === rawMaxE) { rawMinE -= 10; rawMaxE += 10; }
-  const minE = Math.floor(rawMinE) - 10;
-  const maxE = Math.ceil(rawMaxE) + 10;
-  const maxDist = metrics.horizontal_distance_h;
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setDims({
-          w: entry.contentRect.width,
-          h: entry.contentRect.height
-        });
-      }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+  const transect = rawTransect.reduce((acc, pt) => {
+    const prevValid = acc.length > 0 ? acc[acc.length - 1].elev_m : initialValidE;
+    const e = pt.elev_m > 5000 ? prevValid : pt.elev_m;
+    acc.push({ ...pt, elev_m: e });
+    return acc;
   }, []);
 
-  const toCanvas = (cw, ch, dist, elev) => {
-    const chartW = cw - PAD.left - PAD.right;
-    const chartH = ch - PAD.top - PAD.bottom;
-    const x = PAD.left + (dist / maxDist) * chartW;
-    const y = PAD.top + chartH - ((elev - minE) / (maxE - minE)) * chartH;
-    return [x, y];
-  };
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const cw = canvas.width;
-    const ch = canvas.height;
-    ctx.clearRect(0, 0, cw, ch);
-
-    const chartW = cw - PAD.left - PAD.right;
-    const chartH = ch - PAD.top - PAD.bottom;
-    if (chartW <= 0 || chartH <= 0) return;
-
-    // Background grid
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
-    ctx.lineWidth = 1;
-
-    const yTicks = 3;
-    for (let i = 0; i <= yTicks; i++) {
-      const y = PAD.top + (i / yTicks) * chartH;
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(cw - PAD.right, y); ctx.stroke();
-    }
-
-    const xTicks = 4;
-    for (let i = 0; i <= xTicks; i++) {
-      const x = PAD.left + (i / xTicks) * chartW;
-      ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, ch - PAD.bottom); ctx.stroke();
-    }
-
-    // ── Runout zone band ──
-    const runoutDist = metrics.required_runout_3x;
-    const [rx0] = toCanvas(cw, ch, 0, 0);
-    const [rx1] = toCanvas(cw, ch, runoutDist, 0);
-    ctx.fillStyle = "rgba(220,60,60,0.10)";
-    ctx.fillRect(rx0, PAD.top, rx1 - rx0, chartH);
-    ctx.strokeStyle = "rgba(220,60,60,0.55)";
-    ctx.setLineDash([6, 4]);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(rx1, PAD.top); ctx.lineTo(rx1, ch - PAD.bottom); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(220,60,60,0.85)";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.fillText("3×ΔE limit", rx1 + 4, PAD.top + 14);
-
-    // ── Terrain fill ──
-    ctx.beginPath();
-    const [x0, y0] = toCanvas(cw, ch, transect[0].dist_m, transect[0].elev_m);
-    ctx.moveTo(x0, ch - PAD.bottom);
-    ctx.lineTo(x0, y0);
-    transect.forEach(pt => {
-      const [px, py] = toCanvas(cw, ch, pt.dist_m, pt.elev_m);
-      ctx.lineTo(px, py);
-    });
-    const [xlast] = toCanvas(cw, ch, transect[transect.length - 1].dist_m, transect[transect.length - 1].elev_m);
-    ctx.lineTo(xlast, ch - PAD.bottom);
-    ctx.closePath();
-    const grad = ctx.createLinearGradient(0, PAD.top, 0, ch - PAD.bottom);
-    grad.addColorStop(0, "rgba(80,160,120,0.6)");
-    grad.addColorStop(1, "rgba(40,80,60,0.2)");
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // ── Terrain line ──
-    ctx.beginPath();
-    transect.forEach((pt, i) => {
-      const [px, py] = toCanvas(cw, ch, pt.dist_m, pt.elev_m);
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    });
-    ctx.strokeStyle = "rgba(100,220,150,0.95)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // ── Peak marker ──
-    const [px, py] = toCanvas(cw, ch, 0, metrics.elevation_peak);
-    ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
-    ctx.fillStyle = "#f87171"; ctx.fill();
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = "#f87171";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.fillText(`▲ PEAK ${Math.round(metrics.elevation_peak)}m`, px + 8, py + 4);
-
-    // ── Site marker ──
-    const [sx, sy] = toCanvas(cw, ch, metrics.horizontal_distance_h, metrics.elevation_site);
-    ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2);
-    ctx.fillStyle = "#60a5fa"; ctx.fill();
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = "#60a5fa";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.fillText(`◆ SITE ${Math.round(metrics.elevation_site)}m`, sx - 95, sy - 10);
-
-    // ── H distance arrow ──
-    const arrowY = ch - PAD.bottom + 20;
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(px, arrowY); ctx.lineTo(sx, arrowY); ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    [[px, -1], [sx, 1]].forEach(([ax, dir]) => {
-      ctx.beginPath(); ctx.moveTo(ax, arrowY);
-      ctx.lineTo(ax + dir * 7, arrowY - 4);
-      ctx.lineTo(ax + dir * 7, arrowY + 4);
-      ctx.closePath(); ctx.fill();
-    });
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.textAlign = "center";
-    ctx.fillText(`H = ${Math.round(metrics.horizontal_distance_h)}m`, (px + sx) / 2, arrowY - 4);
-    ctx.textAlign = "left";
-
-    // ── Axes ──
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(PAD.left, ch - PAD.bottom); ctx.lineTo(cw - PAD.right, ch - PAD.bottom); ctx.stroke();
-
-    // Y axis labels (drawn inside the chart due to small left padding)
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "left";
-    for (let i = 0; i <= yTicks; i++) {
-      const e = minE + ((maxE - minE) * (yTicks - i)) / yTicks;
-      const y = PAD.top + (i / yTicks) * chartH;
-      ctx.fillText(`${Math.round(e)}m`, PAD.left + 4, y - 4);
-    }
-
-    // X axis labels
-    for (let i = 0; i <= xTicks; i++) {
-      const d = (maxDist / xTicks) * i;
-      const x = PAD.left + (i / xTicks) * chartW;
-      if (i === 0) ctx.textAlign = "left";
-      else if (i === xTicks) ctx.textAlign = "right";
-      else ctx.textAlign = "center";
-      ctx.fillText(`${Math.round(d)}m`, x, ch - PAD.bottom + 14);
-    }
-    ctx.textAlign = "left";
-
-    // Axis titles
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("ELEVATION", PAD.left + 4, PAD.top + 14);
-
-    ctx.textAlign = "center";
-    ctx.fillText("DISTANCE FROM PEAK", PAD.left + chartW / 2, ch - 4);
-    ctx.textAlign = "left";
-  }, [transect, metrics, minE, maxE, PAD, dims]);
-
-  useEffect(() => { draw(); }, [draw]);
-
-  const handleMouseMove = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const chartW = canvas.width - PAD.left - PAD.right;
-    const relX = mouseX - PAD.left;
-    if (relX < 0 || relX > chartW) { setHovered(null); return; }
-    const dist = (relX / chartW) * maxDist;
-    const closest = transect.reduce((a, b) => Math.abs(b.dist_m - dist) < Math.abs(a.dist_m - dist) ? b : a);
-    setHovered({ ...closest, mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top });
-  };
+  const metrics = data.metrics;
+  const runoutDist = metrics.required_runout_3x;
 
   return (
-    <div ref={containerRef} style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0 }}>
-      <canvas
-        ref={canvasRef}
-        width={dims.w}
-        height={dims.h}
-        style={{ cursor: "crosshair", display: "block" }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHovered(null)}
-      />
-      {hovered && (
-        <div className="map-tooltip" style={{ left: hovered.mouseX + 10, top: hovered.mouseY - 40 }}>
-          <span className="tt-label">Distance</span>
-          <span className="tt-val">{Math.round(hovered.dist_m)}m</span>
-          <span className="tt-sub">Elev: {Math.round(hovered.elev_m)}m</span>
-        </div>
-      )}
+    <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={transect}
+          margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
+        >
+          <defs>
+            <linearGradient id="colorElev" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#50a078" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#28503c" stopOpacity={0.2} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={true} horizontal={true} />
+          <XAxis
+            dataKey="dist_m"
+            type="number"
+            domain={[0, 'dataMax']}
+            tickCount={6}
+            tickFormatter={(v) => `${Math.round(v)}m`}
+            stroke="rgba(255,255,255,0.3)"
+            tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "bold", fontFamily: "system-ui, -apple-system, sans-serif" }}
+            label={{ value: "HORIZONTAL DISTANCE FROM PEAK (m)", position: "insideBottom", offset: -15, fill: "rgba(255,255,255,0.3)", fontSize: 10, fontWeight: "bold" }}
+          />
+          <YAxis
+            domain={['dataMin - 10', 'dataMax + 10']}
+            tickCount={5}
+            tickFormatter={(v) => `${Math.round(v)}m`}
+            stroke="rgba(255,255,255,0.3)"
+            tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "bold", fontFamily: "system-ui, -apple-system, sans-serif" }}
+            label={{ value: "ELEVATION (m)", angle: -90, position: "insideLeft", offset: 15, fill: "rgba(255,255,255,0.3)", fontSize: 10, fontWeight: "bold" }}
+          />
+          <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+
+          {/* Runout Band Reference */}
+          <ReferenceLine
+            x={runoutDist}
+            stroke="rgba(220,60,60,0.55)"
+            strokeDasharray="6 4"
+            label={{ position: 'top', value: '3×ΔE limit', fill: 'rgba(220,60,60,0.85)', fontSize: 11, fontWeight: 'bold' }}
+          />
+
+          {/* Peak and Site markers */}
+          <ReferenceDot x={0} y={metrics.elevation_peak} r={6} fill="#f87171" stroke="#fff" strokeWidth={1.5} />
+          <ReferenceDot x={metrics.horizontal_distance_h} y={metrics.elevation_site} r={6} fill="#60a5fa" stroke="#fff" strokeWidth={1.5} />
+
+          <Area
+            type="linear"
+            dataKey="elev_m"
+            stroke="rgba(100,220,150,0.95)"
+            strokeWidth={2}
+            fillOpacity={1}
+            fill="url(#colorElev)"
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }

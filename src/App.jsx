@@ -16,7 +16,7 @@ function App() {
       let parsedGeoJson;
       try {
         parsedGeoJson = JSON.parse(geoJsonInput)
-      } catch (e) {
+      } catch {
         throw new Error("Invalid JSON format")
       }
 
@@ -26,7 +26,15 @@ function App() {
         if (!parsedGeoJson.features || parsedGeoJson.features.length === 0) {
           throw new Error("FeatureCollection is empty")
         }
-        geometry = parsedGeoJson.features[0].geometry;
+        // PHIVOLCS ground truth tools sometimes output a Polyline as the first feature
+        // Sweep through to find the actual Polygon descriptor
+        const polyFeature = parsedGeoJson.features.find(f =>
+          f.geometry && f.geometry.type === "Polygon"
+        );
+        if (!polyFeature) {
+          throw new Error("No Polygon feature found in the FeatureCollection")
+        }
+        geometry = polyFeature.geometry;
       } else if (parsedGeoJson.type === "Feature") {
         geometry = parsedGeoJson.geometry;
       } else {
