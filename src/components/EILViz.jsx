@@ -25,11 +25,18 @@ const MOCK_RESULT = {
         required_runout_3x: 510.0,
       },
       assessment: { status: "SAFE (Beyond Runout)", is_compliant: true },
-      // 1D transect: array of {dist_m, elev_m} from peak → site
-      _viz_transect: [
-        { dist_m: 0, elev_m: 480.0 },
-        { dist_m: 310, elev_m: 400.0 },
-        { dist_m: 620, elev_m: 310.0 }
+      // Now an array of objects representing paths
+      _viz_transects: [
+        {
+          metrics: { elevation_peak: 480.0, elevation_site: 310.0, delta_e: 170.0, horizontal_distance_h: 620.0, required_runout_3x: 510.0 },
+          assessment: { status: "SAFE (Beyond Runout)", is_compliant: true },
+          path: [
+            { dist_m: 0, elev_m: 480.0 },
+            { dist_m: 310, elev_m: 400.0 },
+            { dist_m: 620, elev_m: 310.0 }
+          ],
+          threat_ratio: 0.82
+        }
       ]
     },
     overall_status: "MANUAL REVIEW REQUIRED",
@@ -251,7 +258,7 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 function TransectChart({ data }) {
-  const rawTransect = data._viz_transect || [];
+  const rawTransect = data.path || data._viz_transect || [];
   const initialValidE = rawTransect.find(p => p.elev_m <= 5000)?.elev_m || 0;
 
   const transect = rawTransect.reduce((acc, pt) => {
@@ -263,6 +270,10 @@ function TransectChart({ data }) {
 
   const metrics = data.metrics;
   const runoutDist = metrics.required_runout_3x;
+
+  // Enforce a minimum domain of 250m to prevent visual collapse of tiny runouts
+  const maxTransectDist = transect.length > 0 ? transect[transect.length - 1].dist_m : 0;
+  const axisMaxDist = Math.max(250, maxTransectDist, runoutDist);
 
   return (
     <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0 }}>
@@ -281,7 +292,7 @@ function TransectChart({ data }) {
           <XAxis
             dataKey="dist_m"
             type="number"
-            domain={[0, 'dataMax']}
+            domain={[0, axisMaxDist]}
             tickCount={6}
             tickFormatter={(v) => `${Math.round(v)}m`}
             stroke="rgba(255,255,255,0.3)"
@@ -338,9 +349,19 @@ function MetricCard({ label, value, unit, highlight }) {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function EILViz({ data }) {
   const [tab, setTab] = useState("slope");
+  const [selectedPathIndex, setSelectedPathIndex] = useState(0);
+
   const result = data || MOCK_RESULT;
   const slope = result.phase_1_compliance.slope_stability;
   const dep = result.phase_1_compliance.depositional_hazard;
+
+  // Fallback for old single-transect structure in cached API hits
+  const transects = dep._viz_transects || [{ metrics: dep.metrics, assessment: dep.assessment, path: dep._viz_transect || [] }];
+  const activeTransect = transects[selectedPathIndex] || transects[0];
+
+  const overallStat = result.phase_1_compliance.overall_status;
+  // If we have an override in dep.assessment, use it
+  const depStatus = activeTransect?.assessment?.status || dep.assessment.status;
 
   return (
     <>
@@ -648,8 +669,8 @@ export default function EILViz({ data }) {
               <span className="source-dot" />
               {result.data_source.toUpperCase()} 5m
             </span>
-            <span className={`status-badge ${statusBadge(result.phase_1_compliance.overall_status)}`}>
-              {result.phase_1_compliance.overall_status}
+            <span className={`status-badge ${statusBadge(overallStat)}`}>
+              {overallStat}
             </span>
           </div>
         </div>
@@ -736,15 +757,40 @@ export default function EILViz({ data }) {
           <div className="content">
             {/* Left: transect */}
             <div className="panel" style={{ flex: 1 }}>
-              <div className="panel-header">
-                <span>Elevation Transect: Peak → Site (DEM Query Along H-Line)</span>
-                <span className={`status-badge ${statusBadge(dep.assessment.status)}`}>{dep.assessment.status}</span>
+              <div className="panel-header" style={{ paddingBottom: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span>Elevation Transect: Peak → Site (Topographic Runout Routing)</span>
+                  {transects.length > 1 && (
+                    <select
+                      value={selectedPathIndex}
+                      onChange={(e) => setSelectedPathIndex(Number(e.target.value))}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        color: "#e2e8f0",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        padding: "3px 6px",
+                        borderRadius: 3,
+                        fontSize: 10,
+                        fontFamily: "system-ui, -apple-system, sans-serif",
+                        width: "max-content",
+                        outline: "none"
+                      }}
+                    >
+                      {transects.map((t, i) => (
+                        <option key={i} value={i} style={{ background: "#0f1923" }}>
+                          Critical Path {i + 1} {i === 0 ? "(Highest Threat Severity)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <span className={`status-badge ${statusBadge(depStatus)}`} style={{ alignSelf: 'flex-start' }}>{depStatus}</span>
               </div>
               <div className="panel-body">
-                <TransectChart data={dep} />
+                <TransectChart data={activeTransect} />
                 <div className="annot-list">
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#f87171" }} /><span>Peak — highest pixel in 1km search buffer</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#60a5fa" }} /><span>Site — lowest pixel within parcel geometry</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#f87171" }} /><span>Peak — Trace origin from uphill walker</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#60a5fa" }} /><span>Site — Closest parcel encroachment</span></div>
                   <div className="annot-row"><div className="annot-dot" style={{ background: "rgba(220,60,60,0.5)", borderRadius: 2 }} /><span>3×ΔE runout zone (shaded red) — anything left of dashed line is PRONE</span></div>
                 </div>
               </div>
@@ -756,29 +802,29 @@ export default function EILViz({ data }) {
                 <div className="panel-header">Runout Metrics</div>
                 <div className="panel-body">
                   <div className="metrics-grid" style={{ gridTemplateColumns: "1fr" }}>
-                    <MetricCard label="Elevation Peak" value={dep.metrics.elevation_peak.toFixed(0)} unit="m" />
-                    <MetricCard label="Elevation Site" value={dep.metrics.elevation_site.toFixed(0)} unit="m" />
-                    <MetricCard label="ΔE (drop)" value={dep.metrics.delta_e.toFixed(0)} unit="m" highlight />
-                    <MetricCard label="H (horiz. dist.)" value={dep.metrics.horizontal_distance_h.toFixed(0)} unit="m" />
-                    <MetricCard label="3×ΔE limit" value={dep.metrics.required_runout_3x.toFixed(0)} unit="m" />
+                    <MetricCard label="Elevation: Peak" value={activeTransect.metrics.elevation_peak.toFixed(0)} unit="m" />
+                    <MetricCard label="Elevation: Site" value={activeTransect.metrics.elevation_site.toFixed(0)} unit="m" />
+                    <MetricCard label="ΔE (drop)" value={activeTransect.metrics.delta_e.toFixed(0)} unit="m" highlight />
+                    <MetricCard label="H (horiz. dist.)" value={activeTransect.metrics.horizontal_distance_h.toFixed(0)} unit="m" />
+                    <MetricCard label="3×ΔE limit" value={activeTransect.metrics.required_runout_3x.toFixed(0)} unit="m" />
                   </div>
                 </div>
               </div>
 
-              <div className={`runout-box ${dep.assessment.is_compliant ? "" : "prone"}`}>
-                <div className="runout-formula">H {dep.assessment.is_compliant ? ">" : "<"} 3 × ΔE</div>
-                <div>{dep.metrics.horizontal_distance_h}m {dep.assessment.is_compliant ? ">" : "<"} {dep.metrics.required_runout_3x}m</div>
-                <div style={{ marginTop: 4, fontSize: 11 }}>{dep.assessment.status}</div>
+              <div className={`runout-box ${activeTransect.assessment.is_compliant ? "" : "prone"}`}>
+                <div className="runout-formula">H {activeTransect.assessment.is_compliant ? ">" : "<"} 3 × ΔE</div>
+                <div>{activeTransect.metrics.horizontal_distance_h}m {activeTransect.assessment.is_compliant ? ">" : "<"} {activeTransect.metrics.required_runout_3x}m</div>
+                <div style={{ marginTop: 4, fontSize: 11 }}>{activeTransect.assessment.status}</div>
               </div>
 
               <div className="panel">
                 <div className="panel-header">Algorithm</div>
                 <div className="panel-body" style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, lineHeight: 2, color: "rgba(255,255,255,0.4)" }}>
-                  <div>1. Identify peak P in buffer</div>
-                  <div>2. Identify site S (min elev)</div>
+                  <div>1. Walk uphill from parcel</div>
+                  <div>2. Map multiple ridge peaks</div>
                   <div>3. ΔE = E_peak − E_site</div>
-                  <div>4. H = geodetic dist(P, S)</div>
-                  <div>5. Check H &gt; 3 × ΔE</div>
+                  <div>4. Route flow down to site</div>
+                  <div>5. Check H &gt; 3 × ΔE per path</div>
                 </div>
               </div>
             </div>
