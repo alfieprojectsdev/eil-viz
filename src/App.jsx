@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EILViz from './components/EILViz'
 import './App.css'
 
@@ -8,14 +8,14 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const handleRunAssessment = async () => {
+  const runAssessment = async (input) => {
     try {
       setLoading(true)
       setError(null)
 
       let parsedGeoJson;
       try {
-        parsedGeoJson = JSON.parse(geoJsonInput)
+        parsedGeoJson = JSON.parse(input)
       } catch {
         throw new Error("Invalid JSON format")
       }
@@ -41,7 +41,8 @@ function App() {
         geometry = parsedGeoJson;
       }
 
-      const response = await fetch("http://127.0.0.1:8000/api/v1/assess", {
+      const apiBase = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"
+      const response = await fetch(`${apiBase}/api/v1/assess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -66,6 +67,24 @@ function App() {
       setLoading(false)
     }
   }
+
+  const handleRunAssessment = () => runAssessment(geoJsonInput)
+
+  // Auto-load GeoJSON from ?geo= URL param (base64-encoded FeatureCollection from PHAST)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const geoParam = params.get('geo')
+    if (!geoParam) return
+    let decoded
+    try {
+      decoded = decodeURIComponent(escape(atob(geoParam)))
+    } catch {
+      return
+    }
+    setGeoJsonInput(decoded)
+    window.history.replaceState({}, '', window.location.pathname)
+    runAssessment(decoded)
+  }, [])
 
   return (
     <div className="app-layout">

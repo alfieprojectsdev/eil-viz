@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { SLOPE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
 // https://claude.ai/share/979250ce-03c9-4459-b1bf-095a3b49ed07
 // ─── Mock backend data (matches your real JSON output schema) ───────────────
@@ -8,7 +9,7 @@ const MOCK_RESULT = {
   phase_1_compliance: {
     slope_stability: {
       metrics: { max_slope_degrees: 12.4, avg_slope_degrees: 8.1 },
-      assessment: { status: "FLAG FOR REVIEW", threshold_used: "10–15°" },
+      assessment: { status: SLOPE_STATUS.SAFE, threshold_used: "max_slope" },
       // pixel grid: row-major array of slope values in degrees
       _viz_grid: [
         [1.2, 5.5, 9.1],
@@ -45,15 +46,15 @@ const MOCK_RESULT = {
 
 // ─── Color utilities ─────────────────────────────────────────────────────────
 function slopeColor(deg) {
-  // SAFE < 10°: blue-green | FLAG 10-16°: amber | SUSCEPTIBLE > 16°: crimson
-  if (deg < 10) {
-    const t = deg / 10;
+  // SAFE < 14°: blue-green | FLAG 14-16°: amber | SUSCEPTIBLE > 16°: crimson
+  if (deg < SLOPE_THRESHOLDS.flag) {
+    const t = deg / SLOPE_THRESHOLDS.flag;
     const r = Math.round(20 + t * 30);
     const g = Math.round(160 - t * 40);
     const b = Math.round(130 - t * 50);
     return `rgb(${r},${g},${b})`;
-  } else if (deg < 16) {
-    const t = (deg - 10) / 6;
+  } else if (deg < SLOPE_THRESHOLDS.susceptible) {
+    const t = (deg - SLOPE_THRESHOLDS.flag) / (SLOPE_THRESHOLDS.susceptible - SLOPE_THRESHOLDS.flag);
     const r = Math.round(50 + t * 200);
     const g = Math.round(120 - t * 60);
     const b = Math.round(80 - t * 60);
@@ -221,7 +222,7 @@ function SlopeLegend() {
   const stops = [
     { deg: 0, label: "0°" },
     { deg: 5, label: "5°" },
-    { deg: 10, label: "10° ▶ FLAG" },
+    { deg: SLOPE_THRESHOLDS.flag, label: `${SLOPE_THRESHOLDS.flag}° ▶ FLAG` },
     { deg: 16, label: "16° ▶ SUSCEPTIBLE" },
     { deg: 25, label: "25°" },
   ];
@@ -709,8 +710,8 @@ export default function EILViz({ data }) {
                 <SlopeHeatmap data={slope} />
                 <SlopeLegend />
                 <div className="annot-list" style={{ marginTop: 14 }}>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#14a37a" }} /><span>Safe zone (&lt; 10°)</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#d97706" }} /><span>Flag for review (10°–16°)</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#14a37a" }} /><span>Safe zone (&lt; {SLOPE_THRESHOLDS.flag}°)</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#d97706" }} /><span>Flag for review ({SLOPE_THRESHOLDS.flag}°–{SLOPE_THRESHOLDS.susceptible}°)</span></div>
                   <div className="annot-row"><div className="annot-dot" style={{ background: "#ef4444" }} /><span>Susceptible (&gt; 16°)</span></div>
                   <div className="annot-row"><div className="annot-dot" style={{ background: "transparent", border: "2px solid white" }} /><span>Max slope pixel (white outline)</span></div>
                 </div>
@@ -734,7 +735,7 @@ export default function EILViz({ data }) {
               <div className="panel">
                 <div className="panel-header">Assessment Logic</div>
                 <div className="panel-body" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 2, color: "rgba(255,255,255,0.45)" }}>
-                  <div><span style={{ color: "#4ade80" }}>IF</span> max_slope &lt; 10° → <span style={{ color: "#4ade80" }}>SAFE</span></div>
+                  <div><span style={{ color: "#4ade80" }}>IF</span> max_slope &lt; {SLOPE_THRESHOLDS.flag}° → <span style={{ color: "#4ade80" }}>SAFE</span></div>
                   <div><span style={{ color: "#fbbf24" }}>ELIF</span> max_slope &lt; 16° → <span style={{ color: "#fbbf24" }}>FLAG FOR REVIEW</span></div>
                   <div><span style={{ color: "#f87171" }}>ELSE</span> → <span style={{ color: "#f87171" }}>SUSCEPTIBLE</span></div>
                   <div style={{ marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
