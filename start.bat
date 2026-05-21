@@ -11,6 +11,6 @@
 cd /d "%~dp0"
 if not exist node_modules (
     echo Installing dependencies...
-    npm install
+    call npm install || exit /b 1
 )
-npm run dev
+call npm run dev

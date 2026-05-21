@@ -77,7 +77,8 @@ function App() {
     if (!geoParam) return
     let decoded
     try {
-      decoded = decodeURIComponent(escape(atob(geoParam)))
+      const bytes = Uint8Array.from(atob(geoParam), char => char.charCodeAt(0))
+      decoded = new TextDecoder().decode(bytes)
     } catch {
       return
     }
