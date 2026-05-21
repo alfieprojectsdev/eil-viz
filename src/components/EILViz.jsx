@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { SLOPE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
 // https://claude.ai/share/979250ce-03c9-4459-b1bf-095a3b49ed07
 // ─── Mock backend data (matches your real JSON output schema) ───────────────
@@ -8,7 +9,7 @@ const MOCK_RESULT = {
   phase_1_compliance: {
     slope_stability: {
       metrics: { max_slope_degrees: 12.4, avg_slope_degrees: 8.1 },
-      assessment: { status: "FLAG FOR REVIEW", threshold_used: "10–15°" },
+      assessment: { status: SLOPE_STATUS.SAFE, threshold_used: "max_slope" },
       // pixel grid: row-major array of slope values in degrees
       _viz_grid: [
         [1.2, 5.5, 9.1],
@@ -24,12 +25,12 @@ const MOCK_RESULT = {
         horizontal_distance_h: 620.0,
         required_runout_3x: 510.0,
       },
-      assessment: { status: "SAFE (Beyond Runout)", is_compliant: true },
+      assessment: { status: DEPOSITIONAL_STATUS.SAFE, is_compliant: true },
       // Now an array of objects representing paths
       _viz_transects: [
         {
           metrics: { elevation_peak: 480.0, elevation_site: 310.0, delta_e: 170.0, horizontal_distance_h: 620.0, required_runout_3x: 510.0 },
-          assessment: { status: "SAFE (Beyond Runout)", is_compliant: true },
+          assessment: { status: DEPOSITIONAL_STATUS.SAFE, is_compliant: true },
           path: [
             { dist_m: 0, elev_m: 480.0 },
             { dist_m: 310, elev_m: 400.0 },
@@ -39,27 +40,27 @@ const MOCK_RESULT = {
         }
       ]
     },
-    overall_status: "MANUAL REVIEW REQUIRED",
+    overall_status: OVERALL_STATUS.REVIEW,
   },
 };
 
 // ─── Color utilities ─────────────────────────────────────────────────────────
 function slopeColor(deg) {
-  // SAFE < 10°: blue-green | FLAG 10-16°: amber | SUSCEPTIBLE > 16°: crimson
-  if (deg < 10) {
-    const t = deg / 10;
+  // SAFE < 14°: blue-green | FLAG 14-16°: amber | SUSCEPTIBLE > 16°: crimson
+  if (deg < SLOPE_THRESHOLDS.flag) {
+    const t = deg / SLOPE_THRESHOLDS.flag;
     const r = Math.round(20 + t * 30);
     const g = Math.round(160 - t * 40);
     const b = Math.round(130 - t * 50);
     return `rgb(${r},${g},${b})`;
-  } else if (deg < 16) {
-    const t = (deg - 10) / 6;
+  } else if (deg < SLOPE_THRESHOLDS.susceptible) {
+    const t = (deg - SLOPE_THRESHOLDS.flag) / (SLOPE_THRESHOLDS.susceptible - SLOPE_THRESHOLDS.flag);
     const r = Math.round(50 + t * 200);
     const g = Math.round(120 - t * 60);
     const b = Math.round(80 - t * 60);
     return `rgb(${r},${g},${b})`;
   } else {
-    const t = Math.min((deg - 16) / 9, 1);
+    const t = Math.min((deg - SLOPE_THRESHOLDS.susceptible) / 9, 1);
     const r = Math.round(250 - t * 20);
     const g = Math.round(60 - t * 40);
     const b = Math.round(20);
@@ -221,8 +222,8 @@ function SlopeLegend() {
   const stops = [
     { deg: 0, label: "0°" },
     { deg: 5, label: "5°" },
-    { deg: 10, label: "10° ▶ FLAG" },
-    { deg: 16, label: "16° ▶ SUSCEPTIBLE" },
+    { deg: SLOPE_THRESHOLDS.flag, label: `${SLOPE_THRESHOLDS.flag}° ▶ FLAG` },
+    { deg: SLOPE_THRESHOLDS.susceptible, label: `${SLOPE_THRESHOLDS.susceptible}° ▶ SUSCEPTIBLE` },
     { deg: 25, label: "25°" },
   ];
   return (
@@ -366,110 +367,111 @@ export default function EILViz({ data }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body { background: #0b0f14; }
+        body { background: var(--color-bg-base); }
 
         .app {
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: #0b0f14;
-          color: #d4dbe8;
-          font-family: 'DM Sans', sans-serif;
+          background: var(--color-bg-base);
+          color: var(--color-text-med);
+          font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
         }
 
         /* ── Header ── */
         .header {
-          background: linear-gradient(180deg, #0f1923 0%, #0b0f14 100%);
-          border-bottom: 1px solid rgba(255,255,255,0.07);
-          padding: 20px 32px 16px;
+          background: linear-gradient(180deg, var(--color-bg-surface) 0%, var(--color-bg-base) 100%);
+          border-bottom: 1px solid var(--color-border);
+          padding: 24px 32px 20px;
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 24px;
         }
         .header-badge {
-          background: rgba(220,60,60,0.15);
-          border: 1px solid rgba(220,60,60,0.35);
-          color: #f87171;
-          font-family: system-ui, -apple-system, sans-serif;
+          background: oklch(0.68 0.16 160 / 0.1);
+          border: 1px solid oklch(0.68 0.16 160 / 0.3);
+          color: var(--color-primary);
+          font-family: 'Space Mono', monospace;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 2px;
-          padding: 3px 8px;
-          border-radius: 3px;
+          padding: 4px 10px;
+          border-radius: 4px;
         }
         .header-title {
-          font-family: system-ui, -apple-system, sans-serif;
-          font-size: 13px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          font-size: 14px;
           font-weight: 700;
-          letter-spacing: 1.5px;
-          color: #e2e8f0;
+          letter-spacing: 1px;
+          color: var(--color-text-high);
           text-transform: uppercase;
         }
         .header-sub {
           font-size: 11px;
-          color: rgba(255,255,255,0.35);
-          font-family: system-ui, -apple-system, sans-serif;
-          margin-top: 2px;
+          color: var(--color-text-low);
+          font-family: 'Space Mono', monospace;
+          margin-top: 4px;
         }
         .header-status {
           margin-left: auto;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
         }
 
         /* ── Status badge ── */
-        .badge-safe { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.4); color: #4ade80; }
-        .badge-review { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.4); color: #fbbf24; }
-        .badge-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #f87171; }
+        .badge-safe { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; }
+        .badge-review { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); color: #fbbf24; }
+        .badge-danger { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
         .status-badge {
-          font-family: system-ui, -apple-system, sans-serif;
+          font-family: 'DM Sans', system-ui, sans-serif;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 1px;
-          padding: 4px 10px;
-          border-radius: 4px;
+          padding: 4px 12px;
+          border-radius: 6px;
           text-transform: uppercase;
         }
 
         /* ── Tabs ── */
         .tabs-row {
           display: flex;
-          gap: 0;
-          border-bottom: 1px solid rgba(255,255,255,0.07);
+          gap: 4px;
+          border-bottom: 1px solid var(--color-border);
           padding: 0 32px;
-          background: #0e1520;
+          background: var(--color-bg-surface);
         }
         .tab-btn {
           background: none;
           border: none;
           border-bottom: 2px solid transparent;
-          color: rgba(255,255,255,0.35);
+          color: var(--color-text-low);
           cursor: pointer;
-          font-family: system-ui, -apple-system, sans-serif;
+          font-family: 'DM Sans', system-ui, sans-serif;
           font-size: 11px;
-          letter-spacing: 1.2px;
-          padding: 14px 20px 12px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          padding: 16px 20px 14px;
           text-transform: uppercase;
-          transition: all 0.18s;
+          transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex; align-items: center; gap: 8px;
         }
-        .tab-btn:hover { color: rgba(255,255,255,0.65); }
+        .tab-btn:hover { color: var(--color-text-high); }
         .tab-btn.active {
-          color: #60a5fa;
-          border-bottom-color: #60a5fa;
+          color: var(--color-primary);
+          border-bottom-color: var(--color-primary);
         }
         .tab-icon { font-size: 14px; }
 
         /* ── Content area ── */
         .content {
-          padding: 16px 24px;
+          padding: 24px 32px;
           display: flex;
-          gap: 20px;
+          gap: 24px;
           flex: 1;
           min-height: 0;
           overflow-y: auto;
@@ -478,29 +480,31 @@ export default function EILViz({ data }) {
 
         /* ── Panel ── */
         .panel {
-          background: rgba(255,255,255,0.028);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 6px;
+          background: var(--color-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
           display: flex;
           flex-direction: column;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
         .panel-header {
-          padding: 10px 14px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          font-family: system-ui, -apple-system, sans-serif;
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--color-border);
+          font-family: 'DM Sans', system-ui, sans-serif;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 1px;
-          color: rgba(255,255,255,0.5);
+          color: var(--color-text-high);
           text-transform: uppercase;
           display: flex; align-items: center; justify-content: space-between;
           flex-shrink: 0;
         }
         .panel-body { 
-          padding: 12px; 
+          padding: 20px; 
           flex: 1;
           display: flex;
           flex-direction: column;
+          gap: 16px;
         }
 
         /* ── Metrics grid ── */
@@ -508,58 +512,63 @@ export default function EILViz({ data }) {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
-          margin-bottom: 16px;
+          margin-bottom: 8px;
         }
         .metric-card {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 4px;
-          padding: 8px 10px;
+          background: var(--color-bg-input);
+          border: 1px solid var(--color-border);
+          border-radius: 6px;
+          padding: 12px 16px;
+          transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .metric-card:hover {
+          border-color: var(--color-border-hover);
         }
         .metric-card.metric-highlight {
-          border-color: rgba(251,191,36,0.4);
-          background: rgba(251,191,36,0.08);
+          border-color: var(--color-primary);
+          background: oklch(0.68 0.16 160 / 0.04);
         }
         .metric-label {
-          font-family: system-ui, -apple-system, sans-serif;
-          font-size: 10px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          font-size: 9px;
           font-weight: 700;
-          letter-spacing: 0.5px;
-          color: rgba(255,255,255,0.6);
+          letter-spacing: 1px;
+          color: var(--color-text-low);
           text-transform: uppercase;
-          margin-bottom: 2px;
+          margin-bottom: 4px;
         }
         .metric-value {
-          font-family: system-ui, -apple-system, sans-serif;
-          font-size: 26px;
-          font-weight: 800;
-          color: #ffffff;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+          font-family: 'Space Mono', monospace;
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--color-text-high);
+          font-variant-numeric: tabular-nums;
         }
         .metric-unit {
+          font-family: 'DM Sans', sans-serif;
           font-size: 12px;
-          font-weight: 600;
-          color: rgba(255,255,255,0.6);
-          margin-left: 3px;
+          font-weight: 500;
+          color: var(--color-text-low);
+          margin-left: 4px;
         }
 
         /* ── Legend ── */
         .legend-wrap {
           position: relative;
-          margin-top: 12px;
+          margin-top: 8px;
         }
         .legend-bar {
-          height: 12px;
-          border-radius: 3px;
+          height: 8px;
+          border-radius: 4px;
           width: 100%;
         }
         .legend-labels {
           position: relative;
           height: 24px;
-          margin-top: 2px;
-          font-family: system-ui, -apple-system, sans-serif;
+          margin-top: 6px;
+          font-family: 'Space Mono', monospace;
           font-size: 8.5px;
-          color: rgba(255,255,255,0.4);
+          color: var(--color-text-low);
         }
         .legend-tick {
           position: absolute;
@@ -570,87 +579,87 @@ export default function EILViz({ data }) {
         /* ── Tooltip ── */
         .map-tooltip {
           position: absolute;
-          background: rgba(255, 255, 255, 0.95);
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          padding: 6px 12px;
+          background: var(--color-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 6px;
+          padding: 8px 14px;
           pointer-events: none;
           display: flex;
           flex-direction: column;
-          gap: 2px;
-          z-index: 10;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+          gap: 4px;
+          z-index: 100;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
-        .tt-label { font-family: system-ui, -apple-system, sans-serif; font-size: 10px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; }
-        .tt-val { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: 800; color: #000; }
-        .tt-sub { font-size: 11px; font-weight: 500; color: #666; }
+        .tt-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 9px; font-weight: 700; color: var(--color-text-low); letter-spacing: 1px; text-transform: uppercase; }
+        .tt-val { font-family: 'Space Mono', monospace; font-size: 18px; font-weight: 700; color: var(--color-text-high); }
+        .tt-sub { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--color-text-low); }
 
         /* ── Runout fact box ── */
         .runout-box {
-          background: rgba(34,197,94,0.06);
+          background: rgba(34,197,94,0.04);
           border: 1px solid rgba(34,197,94,0.2);
-          border-radius: 4px;
-          padding: 10px 14px;
-          margin-top: 12px;
-          font-family: system-ui, -apple-system, sans-serif;
-          font-size: 10px;
+          border-radius: 6px;
+          padding: 14px 18px;
+          margin-top: 8px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          font-size: 11px;
           color: #4ade80;
-          line-height: 1.7;
+          line-height: 1.6;
         }
         .runout-box.prone {
-          background: rgba(220,60,60,0.07);
-          border-color: rgba(220,60,60,0.25);
+          background: rgba(220,60,60,0.04);
+          border-color: rgba(220,60,60,0.2);
           color: #f87171;
         }
-        .runout-formula { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+        .runout-formula { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
 
         /* ── Annotation list ── */
         .annot-list {
-          margin-top: 14px;
+          margin-top: 8px;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
         .annot-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           font-size: 11px;
-          color: rgba(255,255,255,0.5);
+          color: var(--color-text-low);
         }
         .annot-dot {
-          width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
         }
 
         /* ── Phase indicator bar ── */
         .phase-bar {
           display: flex; align-items: center;
-          padding: 8px 32px;
+          padding: 10px 32px;
           gap: 16px;
-          background: rgba(255,255,255,0.015);
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-          font-family: system-ui, -apple-system, sans-serif;
+          background: var(--color-bg-surface);
+          border-bottom: 1px solid var(--color-border);
+          font-family: 'Space Mono', monospace;
           font-size: 9px;
           letter-spacing: 1px;
-          color: rgba(255,255,255,0.25);
+          color: var(--color-text-low);
           text-transform: uppercase;
         }
-        .phase-sep { color: rgba(255,255,255,0.1); }
-        .phase-active { color: #60a5fa; }
+        .phase-sep { color: var(--color-border); }
+        .phase-active { color: var(--color-primary); font-weight: 700; }
 
         /* ── Source chip ── */
         .source-chip {
-          display: inline-flex; align-items: center; gap: 5px;
-          font-family: system-ui, -apple-system, sans-serif; font-size: 9px; letter-spacing: 1px;
-          color: rgba(255,255,255,0.35);
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          padding: 2px 8px; border-radius: 10px;
+          display: inline-flex; align-items: center; gap: 6px;
+          font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px;
+          color: var(--color-text-high);
+          background: var(--color-bg-input);
+          border: 1px solid var(--color-border);
+          padding: 4px 10px; border-radius: 12px;
         }
         .source-dot {
           width: 6px; height: 6px; border-radius: 50%;
-          background: #4ade80;
-          box-shadow: 0 0 4px #4ade80;
+          background: var(--color-primary);
+          box-shadow: 0 0 6px var(--color-primary);
         }
       `}</style>
 
@@ -702,16 +711,16 @@ export default function EILViz({ data }) {
             {/* Left: heatmap */}
             <div className="panel" style={{ flex: "0 0 auto" }}>
               <div className="panel-header">
-                <span>Pixel-level Gradient Map — Parcel Bounds</span>
+                <span>Pixel-level Gradient Map: Parcel Bounds</span>
                 <span className={`status-badge ${statusBadge(slope.assessment.status)}`}>{slope.assessment.status}</span>
               </div>
               <div className="panel-body">
                 <SlopeHeatmap data={slope} />
                 <SlopeLegend />
                 <div className="annot-list" style={{ marginTop: 14 }}>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#14a37a" }} /><span>Safe zone (&lt; 10°)</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#d97706" }} /><span>Flag for review (10°–16°)</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#ef4444" }} /><span>Susceptible (&gt; 16°)</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#14a37a" }} /><span>Safe zone (&lt; {SLOPE_THRESHOLDS.flag}°)</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#d97706" }} /><span>Flag for review ({SLOPE_THRESHOLDS.flag}°–{SLOPE_THRESHOLDS.susceptible}°)</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#ef4444" }} /><span>Susceptible (&gt; {SLOPE_THRESHOLDS.susceptible}°)</span></div>
                   <div className="annot-row"><div className="annot-dot" style={{ background: "transparent", border: "2px solid white" }} /><span>Max slope pixel (white outline)</span></div>
                 </div>
               </div>
@@ -725,7 +734,7 @@ export default function EILViz({ data }) {
                   <div className="metrics-grid">
                     <MetricCard label="Max Slope" value={slope.metrics.max_slope_degrees.toFixed(1)} unit="°" highlight />
                     <MetricCard label="Avg Slope" value={slope.metrics.avg_slope_degrees.toFixed(1)} unit="°" />
-                    <MetricCard label="Threshold" value="10–16" unit="°" />
+                    <MetricCard label="Threshold" value={`${SLOPE_THRESHOLDS.flag}–${SLOPE_THRESHOLDS.susceptible}`} unit="°" />
                     <MetricCard label="Algorithm" value="∇z" unit="" />
                   </div>
                 </div>
@@ -734,8 +743,8 @@ export default function EILViz({ data }) {
               <div className="panel">
                 <div className="panel-header">Assessment Logic</div>
                 <div className="panel-body" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 2, color: "rgba(255,255,255,0.45)" }}>
-                  <div><span style={{ color: "#4ade80" }}>IF</span> max_slope &lt; 10° → <span style={{ color: "#4ade80" }}>SAFE</span></div>
-                  <div><span style={{ color: "#fbbf24" }}>ELIF</span> max_slope &lt; 16° → <span style={{ color: "#fbbf24" }}>FLAG FOR REVIEW</span></div>
+                  <div><span style={{ color: "#4ade80" }}>IF</span> max_slope &lt; {SLOPE_THRESHOLDS.flag}° → <span style={{ color: "#4ade80" }}>SAFE</span></div>
+                  <div><span style={{ color: "#fbbf24" }}>ELIF</span> max_slope &lt; {SLOPE_THRESHOLDS.susceptible}° → <span style={{ color: "#fbbf24" }}>FLAG FOR REVIEW</span></div>
                   <div><span style={{ color: "#f87171" }}>ELSE</span> → <span style={{ color: "#f87171" }}>SUSCEPTIBLE</span></div>
                   <div style={{ marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
                     Gradient computed via np.gradient() over every pixel within parcel. Single-transect profiling would miss micro-topographic features.
@@ -746,7 +755,7 @@ export default function EILViz({ data }) {
               <div className="panel">
                 <div className="panel-header">Why a Heatmap?</div>
                 <div className="panel-body" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
-                  Slope stability evaluates the entire 2D surface. A single profile line would under-report hazard if the steepest pixels are off-axis. Every pixel inside the parcel boundary is assessed independently — this view surfaces those hotspots directly.
+                  Slope stability evaluates the entire 2D surface. A single profile line would under-report hazard if the steepest pixels are off-axis. Every pixel inside the parcel boundary is assessed independently: this view surfaces those hotspots directly.
                 </div>
               </div>
             </div>
@@ -789,9 +798,9 @@ export default function EILViz({ data }) {
               <div className="panel-body">
                 <TransectChart data={activeTransect} />
                 <div className="annot-list">
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#f87171" }} /><span>Peak — Trace origin from uphill walker</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "#60a5fa" }} /><span>Site — Closest parcel encroachment</span></div>
-                  <div className="annot-row"><div className="annot-dot" style={{ background: "rgba(220,60,60,0.5)", borderRadius: 2 }} /><span>3×ΔE runout zone (shaded red) — anything left of dashed line is PRONE</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#f87171" }} /><span>Peak: Trace origin from uphill walker</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "#60a5fa" }} /><span>Site: Closest parcel encroachment</span></div>
+                  <div className="annot-row"><div className="annot-dot" style={{ background: "rgba(220,60,60,0.5)", borderRadius: 2 }} /><span>3×ΔE runout zone (shaded red): anything left of dashed line is PRONE</span></div>
                 </div>
               </div>
             </div>

@@ -1,14 +1,33 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  color-scheme: light dark;
-  background-color: #242424;
-  font-size: clamp(14px, 1.5vh, 18px);
+  /* Geologically tinted color system (hue 160: Forest Green/Teal) */
+  --color-primary: oklch(0.68 0.16 160);
+  --color-primary-hover: oklch(0.62 0.15 160);
+  --color-primary-active: oklch(0.55 0.14 160);
+
+  /* Tinted dark neutrals */
+  --color-bg-base: oklch(0.12 0.008 160);      /* Deep earth tone */
+  --color-bg-surface: oklch(0.16 0.01 160);   /* Cards and sidebar */
+  --color-bg-input: oklch(0.10 0.008 160);     /* Textareas and inputs */
+  --color-border: oklch(0.24 0.015 160);      /* Subtle separator */
+  --color-border-hover: oklch(0.32 0.02 160);
+
+  /* Text color scale with high contrast and optical compensations */
+  --color-text-high: oklch(0.95 0.005 160);
+  --color-text-med: oklch(0.78 0.008 160);
+  --color-text-low: oklch(0.54 0.008 160);
+
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-med);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-bg-base);
 }
