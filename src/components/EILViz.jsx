@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { SLOPE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
+import { SLOPE_THRESHOLDS, COVERAGE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
 // https://claude.ai/share/979250ce-03c9-4459-b1bf-095a3b49ed07
 // ─── Mock backend data (matches your real JSON output schema) ───────────────
@@ -9,7 +9,7 @@ const MOCK_RESULT = {
   phase_1_compliance: {
     slope_stability: {
       metrics: { max_slope_degrees: 12.4, avg_slope_degrees: 8.1 },
-      assessment: { status: SLOPE_STATUS.SAFE, threshold_used: "max_slope" },
+      assessment: { status: SLOPE_STATUS.SAFE, threshold_used: "coverage_fraction" },
       // pixel grid: row-major array of slope values in degrees
       _viz_grid: [
         [1.2, 5.5, 9.1],
@@ -743,11 +743,11 @@ export default function EILViz({ data }) {
               <div className="panel">
                 <div className="panel-header">Assessment Logic</div>
                 <div className="panel-body" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 2, color: "rgba(255,255,255,0.45)" }}>
-                  <div><span style={{ color: "#4ade80" }}>IF</span> max_slope &lt; {SLOPE_THRESHOLDS.flag}° → <span style={{ color: "#4ade80" }}>SAFE</span></div>
-                  <div><span style={{ color: "#fbbf24" }}>ELIF</span> max_slope &lt; {SLOPE_THRESHOLDS.susceptible}° → <span style={{ color: "#fbbf24" }}>FLAG FOR REVIEW</span></div>
-                  <div><span style={{ color: "#f87171" }}>ELSE</span> → <span style={{ color: "#f87171" }}>SUSCEPTIBLE</span></div>
+                  <div><span style={{ color: "#f87171" }}>IF</span> area &gt; {SLOPE_THRESHOLDS.susceptible}° exceeds {(COVERAGE_THRESHOLDS.susceptible * 100).toFixed(1)}% → <span style={{ color: "#f87171" }}>SUSCEPTIBLE</span></div>
+                  <div><span style={{ color: "#fbbf24" }}>ELIF</span> area in {SLOPE_THRESHOLDS.flag}–{SLOPE_THRESHOLDS.susceptible}° exceeds {(COVERAGE_THRESHOLDS.flag * 100).toFixed(0)}% → <span style={{ color: "#fbbf24" }}>FLAG FOR REVIEW</span></div>
+                  <div><span style={{ color: "#4ade80" }}>ELSE</span> → <span style={{ color: "#4ade80" }}>SAFE</span></div>
                   <div style={{ marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
-                    Gradient computed via np.gradient() over every pixel within parcel. Single-transect profiling would miss micro-topographic features.
+                    Decision uses the coverage fraction (share of parcel pixels in each slope band), not a single max-slope value, so isolated steep pixels don't condemn an otherwise flat lot. Slope computed via np.gradient() over every pixel within the parcel.
                   </div>
                 </div>
               </div>
