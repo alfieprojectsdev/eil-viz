@@ -42,7 +42,7 @@ The app sends its assessment request directly to `${VITE_API_URL}/api/v1/assess`
 VITE_API_URL=http://192.168.1.10:8000 npm run dev
 ```
 
-Because the request goes to an absolute URL, cross-origin access is handled by eil-calc's own CORS middleware, not by the dev server. `vite.config.js` does define a `/api` proxy, but the app does not currently use it (it fetches the absolute URL instead) — see Known limitations.
+Because the request goes to an absolute URL, cross-origin access is handled by eil-calc's own CORS middleware, not by the dev server.
 
 ## Usage
 
@@ -105,7 +105,7 @@ eil-viz/
 │   ├── index.css               # Global theme resets
 │   └── main.jsx                # React mount point
 ├── index.html
-├── vite.config.js              # Dev server proxy (/api → eil-calc)
+├── vite.config.js              # Vite + React plugin config
 ├── start.bat                   # Windows startup script
 └── package.json
 ```
@@ -114,7 +114,6 @@ eil-viz/
 
 - **`final_decision` always `"PENDING"`** — reflects the upstream eil-calc stub. The operative result is `overall_status` shown in the master status badge.
 - **On-screen "Assessment Logic" card is outdated** — the Slope tab still displays the legacy `max_slope < 14° → SAFE / < 16° → FLAG / else SUSCEPTIBLE` rule. The backend (`eil-calc`) actually decides by coverage fraction (> 1.5% over 16° → SUSCEPTIBLE; > 10% in 14–16° → FLAG). The verdict badge is driven by the backend and is correct; only this explanatory card is stale.
-- **`vite.config.js` `/api` proxy is unused** — `App.jsx` fetches an absolute `VITE_API_URL` instead of a relative `/api/*` path, so the configured dev proxy never fires. Either the app should use the relative path or the proxy block should be removed to avoid confusion.
 - **Dev-first build** — `npm run build` (`vite build`) produces a static `dist/`, and a `Dockerfile` + `nginx.conf` exist for container serving, but there is no documented production deployment target or environment-specific config.
 - **Elevation sanitisation is a clamp, not a rejection** — values above 5000 m are clamped rather than flagged, which can silently mask corrupt DEM reads.
 - **`_viz_transects` fallback** — the app accepts both `_viz_transects` (plural, current) and the legacy `_viz_transect` (singular) key for backwards compatibility with older eil-calc responses.
