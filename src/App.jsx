@@ -41,7 +41,11 @@ function App() {
         geometry = parsedGeoJson;
       }
 
-      const apiBase = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"
+      // Relative by default, so one build artifact works at every tier — dev
+      // server, LAN host, internal DNS name — with no rebuild. In dev, Vite
+      // proxies /api to the backend; in production the reverse proxy does.
+      // Set VITE_API_URL only to point a build at some other origin.
+      const apiBase = import.meta.env.VITE_API_URL ?? ""
       const response = await fetch(`${apiBase}/api/v1/assess`, {
         method: "POST",
         headers: {

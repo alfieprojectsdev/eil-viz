@@ -1,0 +1,37 @@
+# Rendered at container start by the nginx image's envsubst entrypoint
+# (/etc/nginx/templates/*.template -> /etc/nginx/conf.d/*). Only variables that
+# actually exist in the environment are substituted, so nginx's own $uri,
+# $host, $remote_addr and friends pass through untouched.
+#
+# EIL_API_UPSTREAM is the address of the eil-calc process. Under compose that is
+# the service name (backend:8000); standalone it might be 127.0.0.1:8000 or a
+# host address. The Dockerfile sets the default.
+
+server {
+    listen 80;
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Serve static frontend files (React router support)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Single origin: the SPA fetches a relative /api/... path, and this is the
+    # only hop that knows where the backend lives. Keeps CORS out of the picture
+    # and keeps uvicorn off the LAN.
+    location /api/ {
+        proxy_pass http://${EIL_API_UPSTREAM}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # A nationwide-DEM assessment is CPU-bound and can take a while; the
+        # 60 s default would cut it off and show the assessor a 504.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}

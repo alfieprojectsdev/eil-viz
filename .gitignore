@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local environment — may contain credentials; never commit
+.env
+.env.*
+!.env.example
+
+# Lint run output, not source
+lint_output.txt
