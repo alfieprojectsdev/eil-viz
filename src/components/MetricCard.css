@@ -1,0 +1,44 @@
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.metrics-grid.metrics-grid-single { grid-template-columns: 1fr; }
+.metric-card {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.metric-card:hover {
+  border-color: var(--color-border-hover);
+}
+.metric-card.metric-highlight {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg-subtle);
+}
+.metric-label {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--color-text-low);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.metric-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-high);
+  font-variant-numeric: tabular-nums;
+}
+.metric-unit {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-low);
+  margin-left: 4px;
+}

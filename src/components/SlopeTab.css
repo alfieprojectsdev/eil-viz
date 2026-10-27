@@ -1,0 +1,26 @@
+.annot-list.slope-key { margin-top: 14px; }
+.annot-dot.slope-key-safe { background: var(--color-slope-key-safe); }
+.annot-dot.slope-key-flag { background: var(--color-slope-key-flag); }
+.annot-dot.slope-key-susceptible { background: var(--color-slope-key-susceptible); }
+.annot-dot.slope-key-max { background: transparent; border: 2px solid var(--color-slope-key-max); }
+
+.panel-body.logic-body {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  line-height: 2;
+  color: var(--color-text-code);
+}
+.logic-danger { color: var(--color-danger); }
+.logic-review { color: var(--color-review); }
+.logic-safe { color: var(--color-safe); }
+.logic-note {
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--color-text-footnote);
+}
+
+.panel-body.prose-body {
+  font-size: 12px;
+  color: var(--color-text-prose);
+  line-height: 1.7;
+}
