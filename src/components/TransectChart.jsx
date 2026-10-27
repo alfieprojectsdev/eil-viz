@@ -1,5 +1,5 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
-import { readToken } from "../lib/tokens";
+import { readTokens } from "../lib/tokens";
 import "./TransectChart.css";
 
 const CustomTooltip = ({ active, payload }) => {
@@ -16,7 +16,14 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-const TICK_FONT = { fontSize: 11, fontWeight: "bold", fontFamily: "system-ui, -apple-system, sans-serif" };
+const CHART_TOKENS = [
+  "--color-chart-grid", "--color-chart-axis", "--color-chart-tick",
+  "--color-chart-elev-line", "--color-chart-elev-fill-top", "--color-chart-elev-fill-bottom",
+  "--color-chart-runout-line", "--color-chart-runout-label",
+  "--color-chart-peak", "--color-chart-site", "--color-chart-marker-stroke",
+];
+
+const TICK_FONT ={ fontSize: 11, fontWeight: "bold", fontFamily: "system-ui, -apple-system, sans-serif" };
 
 export default function TransectChart({ data }) {
   const rawTransect = data.path || data._viz_transect || [];
@@ -37,10 +44,10 @@ export default function TransectChart({ data }) {
   const axisMaxDist = Math.max(250, maxTransectDist, runoutDist);
 
   // Recharts sets these as SVG attributes, so pass resolved values, not var().
-  const axis = readToken("--color-chart-axis");
-  const tick = { fill: readToken("--color-chart-tick"), ...TICK_FONT };
-  const markerStroke = readToken("--color-chart-marker-stroke");
-  const runoutLabel = readToken("--color-chart-runout-label");
+  const color = readTokens(CHART_TOKENS);
+  const axis = color["--color-chart-axis"];
+  const tick = { fill: color["--color-chart-tick"], ...TICK_FONT };
+  const markerStroke = color["--color-chart-marker-stroke"];
 
   return (
     <div className="transect-wrap">
@@ -51,11 +58,11 @@ export default function TransectChart({ data }) {
         >
           <defs>
             <linearGradient id="colorElev" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={readToken("--color-chart-elev-fill-top")} stopOpacity={0.6} />
-              <stop offset="95%" stopColor={readToken("--color-chart-elev-fill-bottom")} stopOpacity={0.2} />
+              <stop offset="5%" stopColor={color["--color-chart-elev-fill-top"]} stopOpacity={0.6} />
+              <stop offset="95%" stopColor={color["--color-chart-elev-fill-bottom"]} stopOpacity={0.2} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={readToken("--color-chart-grid")} vertical={true} horizontal={true} />
+          <CartesianGrid strokeDasharray="3 3" stroke={color["--color-chart-grid"]} vertical={true} horizontal={true} />
           <XAxis
             dataKey="dist_m"
             type="number"
@@ -79,19 +86,19 @@ export default function TransectChart({ data }) {
           {/* Runout Band Reference */}
           <ReferenceLine
             x={runoutDist}
-            stroke={readToken("--color-chart-runout-line")}
+            stroke={color["--color-chart-runout-line"]}
             strokeDasharray="6 4"
-            label={{ position: 'top', value: '3×ΔE limit', fill: runoutLabel, fontSize: 11, fontWeight: 'bold' }}
+            label={{ position: 'top', value: '3×ΔE limit', fill: color["--color-chart-runout-label"], fontSize: 11, fontWeight: 'bold' }}
           />
 
           {/* Peak and Site markers */}
-          <ReferenceDot x={0} y={metrics.elevation_peak} r={6} fill={readToken("--color-chart-peak")} stroke={markerStroke} strokeWidth={1.5} />
-          <ReferenceDot x={metrics.horizontal_distance_h} y={metrics.elevation_site} r={6} fill={readToken("--color-chart-site")} stroke={markerStroke} strokeWidth={1.5} />
+          <ReferenceDot x={0} y={metrics.elevation_peak} r={6} fill={color["--color-chart-peak"]} stroke={markerStroke} strokeWidth={1.5} />
+          <ReferenceDot x={metrics.horizontal_distance_h} y={metrics.elevation_site} r={6} fill={color["--color-chart-site"]} stroke={markerStroke} strokeWidth={1.5} />
 
           <Area
             type="linear"
             dataKey="elev_m"
-            stroke={readToken("--color-chart-elev-line")}
+            stroke={color["--color-chart-elev-line"]}
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorElev)"

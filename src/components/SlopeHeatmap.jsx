@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { slopeColor } from "../lib/slopeColor";
-import { readToken } from "../lib/tokens";
+import { makeSlopeColor } from "../lib/slopeColor";
+import { readTokens } from "../lib/tokens";
 import "./SlopeHeatmap.css";
 
 export default function SlopeHeatmap({ data }) {
@@ -49,6 +49,9 @@ export default function SlopeHeatmap({ data }) {
 
     ctx.clearRect(0, 0, cw, ch);
 
+    const slopeColor = makeSlopeColor();
+    const color = readTokens(["--color-heatmap-frame", "--color-heatmap-grid", "--color-heatmap-max", "--color-heatmap-label"]);
+
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
         const val = grid[r][c];
@@ -59,11 +62,11 @@ export default function SlopeHeatmap({ data }) {
       }
     }
 
-    ctx.strokeStyle = readToken("--color-heatmap-frame");
+    ctx.strokeStyle = color["--color-heatmap-frame"];
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, cw - 2, ch - 2);
 
-    ctx.strokeStyle = readToken("--color-heatmap-grid");
+    ctx.strokeStyle = color["--color-heatmap-grid"];
     ctx.lineWidth = 0.5;
     for (let r = 1; r < activeRows; r++) {
       ctx.beginPath(); ctx.moveTo(0, r * cellH); ctx.lineTo(cw, r * cellH); ctx.stroke();
@@ -80,12 +83,12 @@ export default function SlopeHeatmap({ data }) {
       }
     }
     if (maxVal !== -Infinity) {
-      ctx.strokeStyle = readToken("--color-heatmap-max");
+      ctx.strokeStyle = color["--color-heatmap-max"];
       ctx.lineWidth = 2.5;
       ctx.strokeRect((maxValC - minC) * cellW + 1, (maxValR - minR) * cellH + 1, cellW - 2, cellH - 2);
     }
 
-    ctx.fillStyle = readToken("--color-heatmap-label");
+    ctx.fillStyle = color["--color-heatmap-label"];
     ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
     ctx.fillText("N↑", 8, 16);
 

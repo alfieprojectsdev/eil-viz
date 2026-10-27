@@ -40,7 +40,7 @@
   --color-danger-border: rgba(239, 68, 68, 0.3);
   --color-danger-border-subtle: rgba(220, 60, 60, 0.2);
 
-  /* Slope scale. slopeColor() (src/lib/slopeColor.js) interpolates the
+  /* Slope scale. makeSlopeColor() (src/lib/slopeColor.js) interpolates the
      heatmap and legend between these four stops: safe-low at 0°, safe-high
      at the flag threshold, flag-high at the susceptible threshold, and
      susceptible-high at threshold + 9°. */
@@ -93,7 +93,7 @@
    block inside EILViz. Applying it globally would narrow the empty-state
    sidebar from 408px to 360px; see README "Known limitations". :where()
    keeps the specificity at zero so element rules like `button` still win. */
-:where(:root:has(.app)) *,:where(:root:has(.app)) *::before, :where(:root:has(.app)) *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:where(:root:has(.app)) *, :where(:root:has(.app)) *::before, :where(:root:has(.app)) *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   margin: 0;

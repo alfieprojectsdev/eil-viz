@@ -1,8 +1,9 @@
 import { SLOPE_THRESHOLDS } from "../constants/status";
-import { slopeColor } from "../lib/slopeColor";
+import { makeSlopeColor } from "../lib/slopeColor";
 import "./SlopeLegend.css";
 
 export default function SlopeLegend() {
+  const slopeColor = makeSlopeColor();
   const stops = [
     { deg: 0, label: "0°" },
     { deg: 5, label: "5°" },
