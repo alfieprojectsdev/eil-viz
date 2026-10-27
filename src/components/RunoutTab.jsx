@@ -10,6 +10,8 @@ export default function RunoutTab({ dep, selectedPathIndex, onSelectPath }) {
 
   // If we have an override in dep.assessment, use it
   const depStatus = activeTransect?.assessment?.status || dep.assessment.status;
+  // Missing or non-boolean counts as not compliant, so the box fails to PRONE.
+  const compliant = activeTransect?.assessment?.is_compliant === true;
 
   return (
     <div className="content">
@@ -59,10 +61,10 @@ export default function RunoutTab({ dep, selectedPathIndex, onSelectPath }) {
           </div>
         </div>
 
-        <div className={`runout-box ${activeTransect.assessment.is_compliant ? "" : "prone"}`}>
-          <div className="runout-formula">H {activeTransect.assessment.is_compliant ? ">" : "<"} 3 × ΔE</div>
-          <div>{activeTransect.metrics.horizontal_distance_h}m {activeTransect.assessment.is_compliant ? ">" : "<"} {activeTransect.metrics.required_runout_3x}m</div>
-          <div className="runout-status">{activeTransect.assessment.status}</div>
+        <div className={`runout-box ${compliant ? "" : "prone"}`}>
+          <div className="runout-formula">H {compliant ? ">" : "<"} 3 × ΔE</div>
+          <div>{activeTransect.metrics.horizontal_distance_h}m {compliant ? ">" : "<"} {activeTransect.metrics.required_runout_3x}m</div>
+          <div className="runout-status">{depStatus}</div>
         </div>
 
         <div className="panel">
