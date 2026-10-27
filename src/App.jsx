@@ -2,6 +2,22 @@ import { useState, useEffect } from 'react'
 import EILViz from './components/EILViz'
 import './App.css'
 
+// eil-calc's `detail` is a string for 400/503/500, an object for the 422 it
+// returns when an assessment can't be completed, and a list for FastAPI's own
+// request-validation errors.
+function describeError(status, body) {
+  const detail = body?.detail
+  if (typeof detail === "string") return detail
+  if (detail?.error === "assessment_incomplete") {
+    return `Assessment could not be completed (${detail.module}): ${detail.reason}`
+  }
+  if (Array.isArray(detail)) {
+    const msgs = detail.map(d => d?.msg).filter(Boolean)
+    if (msgs.length) return msgs.join("; ")
+  }
+  return `Assessment failed (HTTP ${status})`
+}
+
 function App() {
   const [geoJsonInput, setGeoJsonInput] = useState('')
   const [data, setData] = useState(null)
@@ -60,7 +76,7 @@ function App() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.detail || "Assessment failed")
+        throw new Error(describeError(response.status, errData))
       }
 
       const result = await response.json()

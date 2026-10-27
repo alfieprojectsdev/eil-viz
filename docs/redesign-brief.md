@@ -21,8 +21,8 @@ Current layout: a fixed 360 px sidebar on the left, the dashboard filling the re
 |---|---|---|
 | Empty | One line of text: "Paste a GeoJSON polygon..." | Nothing for the PHAST path, where the textarea is irrelevant |
 | Loading | Button text changes to "Computing..." | An assessment can take minutes (nginx allows 300 s). No progress or elapsed time |
-| Error | Red box in the sidebar with `detail` | 422 shows `[object Object]`; no distinction between bad input, missing DEM and "couldn't compute" |
-| Result: header | Project ID, data-source chip, overall badge, phase breadcrumb | Badge is green for NOT CERTIFIED; chip says `5m` even for 30 m SRTM |
+| Error | Red box in the sidebar with the backend's message | Same red box for bad input, missing DEM and "couldn't compute" |
+| Result: header | Project ID, data-source chip, overall badge, phase breadcrumb | Status is told by colour alone |
 | Result: slope tab | Canvas heatmap + legend + colour key; cards for max/avg slope, threshold, "Algorithm ∇z"; Assessment Logic card; "Why a heatmap?" card | Coverage percentages that decide the verdict aren't returned or shown, only max/avg slope |
 | Result: runout tab | Elevation area chart with peak/site dots and 3×ΔE line; path dropdown (≤3); five metric cards; H vs 3×ΔE box; five-step algorithm card | Legend refers to a shaded zone that isn't drawn |
 
@@ -64,7 +64,7 @@ Not available without a backend change: coverage fractions per slope band, parce
 
 ## Plan
 
-1. Fix the safety bugs first, in their own PR, because they shouldn't wait for a redesign: the NOT CERTIFIED badge, the 422 message, the hard-coded `5m`.
+1. Fix the safety bugs first, because they shouldn't wait for a redesign: the NOT CERTIFIED badge, the 422 message, the hard-coded `5m`. (Done on branch `docs-sync-and-status-fixes`.)
 2. Refactor with no visual change: split `EILViz.jsx` into components, move its `<style>` block into CSS files and replace inline rgba/hex values with tokens. The redesign then lands as token and component changes.
 3. Capture fresh fixtures from eil-calc (one each for CERTIFIED SAFE, MANUAL REVIEW REQUIRED, NOT CERTIFIED, flat parcel, 422) and screenshot every state above. Replace the stale `sample_payload.json`.
 4. Design in Claude from this brief, the screenshots and the fixtures.

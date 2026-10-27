@@ -127,8 +127,8 @@ This section is for hazard assessors reviewing the interface: what each element 
 
 ### Top bar
 
-- The project name and a data-source chip (for example `IFSAR 5m`) telling you which elevation map produced the result.
-- The overall status badge (top-right) shows the parcel's worst-case verdict, whichever path you're viewing below. Intended colours: green for **CERTIFIED SAFE**, amber for **MANUAL REVIEW REQUIRED**, red for **NOT CERTIFIED**. See known limitations: **NOT CERTIFIED** currently shows green.
+- The project name and a data-source chip (`IFSAR 5m`, `SRTM 30m` or `LOCAL DEM`) telling you which elevation map produced the result.
+- The overall status badge (top-right) shows the parcel's worst-case verdict, whichever path you're viewing below: green for **CERTIFIED SAFE**, amber for **MANUAL REVIEW REQUIRED**, red for **NOT CERTIFIED**. An unrecognised status also shows red.
 - A breadcrumb shows **Phase 1** (the slope and runout checks running today) and that **Phase 2** (the machine-learning model) is deferred.
 
 ### Tab 1: Slope Stability Heatmap
@@ -183,9 +183,6 @@ eil-viz/
 
 ## Known limitations
 
-- **NOT CERTIFIED shows a green badge.** `statusBadge()` in `EILViz.jsx` checks `status.includes("CERTIFIED")`, which matches `"NOT CERTIFIED"`. A parcel that failed certification gets the same green badge as a certified one. `OVERALL_STATUS` in `status.js` also lacks the `NOT CERTIFIED` value.
-- **422 errors show `[object Object]`.** `App.jsx` passes `errData.detail` straight to `new Error()`, but eil-calc's 422 `detail` is an object, so the assessor sees no reason.
-- **The data-source chip always says `5m`.** It's hard-coded, so an SRTM (30 m) result reads `SRTM 5m` and a local override reads `LOCAL_OVERRIDE 5m`.
 - **The runout legend mentions a shaded zone that isn't drawn.** Only the dashed line is rendered.
 - **No error boundary.** An empty or malformed `_viz_grid` throws in `SlopeHeatmap` (it reads `grid[0].length`), and with no boundary the whole dashboard goes blank.
 - **Elevation clamp.** Path points above 5000 m are replaced with the previous valid value, which can hide a corrupt DEM read.
