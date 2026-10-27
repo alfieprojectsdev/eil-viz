@@ -123,7 +123,7 @@ Status strings and thresholds are copied by hand into `src/constants/status.js`.
 
 ## What you see on screen (plain-language guide for reviewers)
 
-This section is for hazard assessors reviewing the interface: what each element means and where it comes from, so you can judge whether it communicates the assessment clearly. No coding needed. The screen is one dashboard (`src/components/EILViz.jsx`) fed by the eil-calc result, beside a sidebar where you paste the parcel.
+This section is for hazard assessors reviewing the interface: what each element means and where it comes from, so you can judge whether it communicates the assessment clearly. No coding needed. The screen is one dashboard (`src/components/EILViz.jsx` and the components beside it) fed by the eil-calc result, beside a sidebar where you paste the parcel.
 
 ### Top bar
 
@@ -151,7 +151,7 @@ Answers "could a landslide from higher ground reach the lot?"
 
 ### How to give feedback
 
-Name the tab and element (for example "Slope tab → Assessment Logic card") so the change can be found in `EILViz.jsx`.
+Name the tab and element (for example "Slope tab → Assessment Logic card") so the change can be found in `src/components/` (the slope tab is `SlopeTab.jsx`, the runout tab `RunoutTab.jsx`).
 
 ## Project structure
 
@@ -162,15 +162,27 @@ eil-viz/
 ├── scripts/
 │   └── vendor-fonts.sh         # Regenerates public/fonts/ from Google Fonts
 ├── src/
-│   ├── components/
-│   │   └── EILViz.jsx          # Dashboard: header, both tabs, chart/canvas, and its own CSS in a <style> block
+│   ├── components/             # Each .jsx imports the .css file of the same name
+│   │   ├── EILViz.jsx          # Dashboard shell: header, tab bar, active tab; holds tab and path state
+│   │   ├── EILViz.css          # Shell, panels, tooltip and colour-key styles shared by both tabs
+│   │   ├── Header.jsx          # Project ID, data-source chip, overall badge, phase breadcrumb
+│   │   ├── StatusBadge.jsx     # Status pill: exact-match status → colour, anything else → danger
+│   │   ├── SlopeTab.jsx        # Slope tab: heatmap panel, metric cards, assessment logic
+│   │   ├── SlopeHeatmap.jsx    # Canvas heatmap of _viz_grid with hover tooltip
+│   │   ├── SlopeLegend.jsx     # Gradient bar with threshold ticks
+│   │   ├── RunoutTab.jsx       # Runout tab: path picker, chart, metric cards, H vs 3×ΔE box
+│   │   ├── TransectChart.jsx   # Recharts elevation profile for one path
+│   │   └── MetricCard.jsx      # Labelled number card
 │   ├── constants/
 │   │   └── status.js           # Thresholds and status strings mirrored from eil-calc
+│   ├── lib/
+│   │   ├── tokens.js           # Reads --color-* tokens for canvas and Recharts, which take plain colour strings
+│   │   └── slopeColor.js       # Slope → colour, interpolated between the --color-slope-* tokens
 │   ├── data/
 │   │   └── sample_payload.json # Old captured response; not imported anywhere
 │   ├── App.jsx                 # Sidebar, GeoJSON parsing, ?geo= handling, fetch
 │   ├── App.css                 # Sidebar and layout styles
-│   ├── index.css               # Design tokens (--color-*) and global resets
+│   ├── index.css               # Design tokens (--color-*) for every dashboard colour, and global resets
 │   └── main.jsx                # React mount point
 ├── Dockerfile                  # node:22 build → nginx:alpine serve
 ├── nginx.conf.template         # SPA fallback + /api/ reverse proxy
@@ -186,6 +198,8 @@ eil-viz/
 - The runout legend mentions a shaded zone, but only the dashed 3×ΔE line is drawn.
 - There's no error boundary. An empty or malformed `_viz_grid` throws in `SlopeHeatmap` (it reads `grid[0].length`) and the whole dashboard goes blank.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
-- `EILViz` has an inline `MOCK_RESULT` fallback that never shows, because `App.jsx` only renders the dashboard once real data exists. `src/data/sample_payload.json` isn't imported anywhere and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
+- Before the first result the sidebar is 408 px wide; it narrows to 360 px once the dashboard mounts. The `box-sizing: border-box` reset in `index.css` only applies while `.app` exists, as the old in-component `<style>` block did. Making it global would remove the jump but change the empty state.
+- `App.css` (sidebar, error box) still has a few literal oklch/rgba colours. Only the dashboard moved onto tokens.
+- `src/data/sample_payload.json` isn't imported anywhere and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
 - The build is one 564 kB JS bundle (171 kB gzipped), mostly Recharts, and Vite warns about it on every build.

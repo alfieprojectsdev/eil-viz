@@ -6,10 +6,13 @@ eil-calc is worked on in its own session. Don't edit it from here; report backen
 ## Layout
 
 - `src/App.jsx`: sidebar, GeoJSON parsing, `?geo=` (base64, from the PHAST extension), `POST /api/v1/assess`.
-- `src/components/EILViz.jsx`: the whole dashboard (~850 lines), including its CSS in one `<style>` block.
+- `src/components/`: the dashboard. `EILViz.jsx` composes `Header`, `SlopeTab` and `RunoutTab`;
+  each component imports the `.css` file of the same name.
 - `src/constants/status.js`: hand-copied mirror of eil-calc's `eil_status.py` enums and the
   thresholds in `slope_stability.py` (14°/16°, 1.5%/10%). Keep it in step when the backend changes.
-- `src/index.css`: `--color-*` oklch tokens. EILViz still hard-codes many rgba/hex colours inline.
+- `src/index.css`: `--color-*` tokens, including status, slope scale and chart colours. Components
+  use `var(--color-*)`; canvas and Recharts read resolved values through `src/lib/tokens.js`.
+  Don't put literal colours in components.
 
 ## Commands
 

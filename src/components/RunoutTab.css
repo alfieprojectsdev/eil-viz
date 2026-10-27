@@ -1,0 +1,51 @@
+.panel-header.runout-header { padding-bottom: 6px; }
+.runout-header .status-badge { align-self: flex-start; }
+.runout-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.path-select {
+  background: var(--color-select-bg);
+  color: var(--color-select-text);
+  border: 1px solid var(--color-select-border);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: system-ui, -apple-system, sans-serif;
+  width: max-content;
+  outline: none;
+}
+.path-select option { background: var(--color-select-option-bg); }
+
+.annot-dot.runout-key-peak { background: var(--color-chart-peak); }
+.annot-dot.runout-key-site { background: var(--color-chart-site); }
+.annot-dot.runout-key-zone { background: var(--color-chart-runout-zone); border-radius: 2px; }
+
+/* ── Runout fact box ── */
+.runout-box {
+  background: var(--color-safe-bg-subtle);
+  border: 1px solid var(--color-safe-border-subtle);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-top: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--color-safe);
+  line-height: 1.6;
+}
+.runout-box.prone {
+  background: var(--color-danger-bg-subtle);
+  border-color: var(--color-danger-border-subtle);
+  color: var(--color-danger);
+}
+.runout-formula { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.runout-status { margin-top: 4px; font-size: 11px; }
+
+.panel-body.algorithm-body {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  line-height: 2;
+  color: var(--color-text-prose);
+}
