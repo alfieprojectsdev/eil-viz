@@ -9,7 +9,8 @@ function describeError(status, body) {
   const detail = body?.detail
   if (typeof detail === "string") return detail
   if (detail?.error === "assessment_incomplete") {
-    return `Assessment could not be completed (${detail.module}): ${detail.reason}`
+    const where = detail.module ? ` (${detail.module})` : ""
+    return `Assessment could not be completed${where}: ${detail.reason ?? "no reason given"}`
   }
   if (Array.isArray(detail)) {
     const msgs = detail.map(d => d?.msg).filter(Boolean)
@@ -28,6 +29,9 @@ function App() {
     try {
       setLoading(true)
       setError(null)
+      // Drop the previous result so a failed run never leaves another
+      // parcel's verdict on screen.
+      setData(null)
 
       let parsedGeoJson;
       try {

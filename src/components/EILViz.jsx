@@ -69,11 +69,11 @@ function slopeColor(deg) {
 }
 
 // Exact matches only: substring checks once let "NOT CERTIFIED" match
-// "CERTIFIED" and render green. Anything unrecognised falls through to danger.
+// "CERTIFIED" and render green. Anything unrecognised, PENDING included,
+// falls through to danger.
 const BADGE_CLASS = {
   [OVERALL_STATUS.CERTIFIED]: "badge-safe",
   [OVERALL_STATUS.REVIEW]: "badge-review",
-  [OVERALL_STATUS.PENDING]: "badge-review",
   [OVERALL_STATUS.NOT_CERTIFIED]: "badge-danger",
   [SLOPE_STATUS.SAFE]: "badge-safe",
   [SLOPE_STATUS.FLAG]: "badge-review",

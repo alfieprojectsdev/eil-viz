@@ -183,9 +183,9 @@ eil-viz/
 
 ## Known limitations
 
-- **The runout legend mentions a shaded zone that isn't drawn.** Only the dashed line is rendered.
-- **No error boundary.** An empty or malformed `_viz_grid` throws in `SlopeHeatmap` (it reads `grid[0].length`), and with no boundary the whole dashboard goes blank.
-- **Elevation clamp.** Path points above 5000 m are replaced with the previous valid value, which can hide a corrupt DEM read.
-- **Dead mock data.** `EILViz` has an inline `MOCK_RESULT` fallback, but `App.jsx` only renders it once real data exists, so the mock never shows. `src/data/sample_payload.json` isn't imported and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
-- **Legacy key fallback.** The UI still accepts the old single `_viz_transect` key from pre-`_viz_transects` responses.
-- **One 564 kB JS bundle** (171 kB gzipped). Vite warns about it on every build; Recharts is most of it.
+- The runout legend mentions a shaded zone, but only the dashed 3×ΔE line is drawn.
+- There's no error boundary. An empty or malformed `_viz_grid` throws in `SlopeHeatmap` (it reads `grid[0].length`) and the whole dashboard goes blank.
+- Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
+- `EILViz` has an inline `MOCK_RESULT` fallback that never shows, because `App.jsx` only renders the dashboard once real data exists. `src/data/sample_payload.json` isn't imported anywhere and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
+- The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
+- The build is one 564 kB JS bundle (171 kB gzipped), mostly Recharts, and Vite warns about it on every build.
