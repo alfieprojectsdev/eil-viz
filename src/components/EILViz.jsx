@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { SLOPE_THRESHOLDS, COVERAGE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
+import { SLOPE_THRESHOLDS, COVERAGE_THRESHOLDS, SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS, DATA_SOURCE_LABELS } from "../constants/status";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from "recharts";
 // https://claude.ai/share/979250ce-03c9-4459-b1bf-095a3b49ed07
 // ─── Mock backend data (matches your real JSON output schema) ───────────────
@@ -68,10 +68,26 @@ function slopeColor(deg) {
   }
 }
 
+// Exact matches only: substring checks once let "NOT CERTIFIED" match
+// "CERTIFIED" and render green. Anything unrecognised, PENDING included,
+// falls through to danger.
+const BADGE_CLASS = {
+  [OVERALL_STATUS.CERTIFIED]: "badge-safe",
+  [OVERALL_STATUS.REVIEW]: "badge-review",
+  [OVERALL_STATUS.NOT_CERTIFIED]: "badge-danger",
+  [SLOPE_STATUS.SAFE]: "badge-safe",
+  [SLOPE_STATUS.FLAG]: "badge-review",
+  [SLOPE_STATUS.SUSCEPTIBLE]: "badge-danger",
+  [DEPOSITIONAL_STATUS.SAFE]: "badge-safe",
+  [DEPOSITIONAL_STATUS.PRONE]: "badge-danger",
+};
+
 function statusBadge(status) {
-  if (status.includes("SAFE") || status.includes("CERTIFIED")) return "badge-safe";
-  if (status.includes("REVIEW") || status.includes("FLAG")) return "badge-review";
-  return "badge-danger";
+  return BADGE_CLASS[status] ?? "badge-danger";
+}
+
+function dataSourceLabel(source) {
+  return DATA_SOURCE_LABELS[source] ?? String(source ?? "unknown").toUpperCase();
 }
 
 // ─── Slope Heatmap ────────────────────────────────────────────────────────────
@@ -677,7 +693,7 @@ export default function EILViz({ data }) {
           <div className="header-status">
             <span className="source-chip">
               <span className="source-dot" />
-              {result.data_source.toUpperCase()} 5m
+              {dataSourceLabel(result.data_source)}
             </span>
             <span className={`status-badge ${statusBadge(overallStat)}`}>
               {overallStat}

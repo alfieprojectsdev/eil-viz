@@ -28,5 +28,14 @@ export const DEPOSITIONAL_STATUS = {
 export const OVERALL_STATUS = {
   PENDING: "PENDING",
   CERTIFIED: "CERTIFIED SAFE",
+  NOT_CERTIFIED: "NOT CERTIFIED",
   REVIEW: "MANUAL REVIEW REQUIRED",
+};
+
+// DEM source → label shown in the header chip. Keys mirror the source_type
+// values smart_fetcher.py returns; resolution is that of each nationwide DEM.
+export const DATA_SOURCE_LABELS = {
+  ifsar: "IFSAR 5m",
+  srtm: "SRTM 30m",
+  local_override: "LOCAL DEM",
 };
