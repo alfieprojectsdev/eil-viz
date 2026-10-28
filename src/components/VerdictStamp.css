@@ -1,0 +1,26 @@
+.verdict-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 10px 14px;
+  border-radius: 10px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.verdict-stamp-safe {
+  border: 2px solid var(--color-safe);
+  background: color-mix(in oklch, var(--color-safe) 10%, transparent);
+  color: var(--color-safe-text);
+}
+.verdict-stamp-review {
+  border: 2px dashed var(--color-review);
+  background: color-mix(in oklch, var(--color-review) 10%, transparent);
+  color: var(--color-review-text);
+}
+.verdict-stamp-danger {
+  border: 2px solid var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}

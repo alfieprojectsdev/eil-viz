@@ -1,151 +1,98 @@
-import { useState, useEffect } from 'react'
-import EILViz from './components/EILViz'
-import './App.css'
+import { useState, useEffect, useRef } from 'react'
+import { extractPolygon } from './lib/geojson'
+import { assess, AssessmentError } from './lib/api'
+import EntryScreen from './components/EntryScreen'
+import LoadingScreen from './components/LoadingScreen'
+import ErrorScreen from './components/ErrorScreen'
+import ResultScreen from './components/ResultScreen'
+import ResultBoundary from './components/ResultBoundary'
 
-// eil-calc's `detail` is a string for 400/503/500, an object for the 422 it
-// returns when an assessment can't be completed, and a list for FastAPI's own
-// request-validation errors.
-function describeError(status, body) {
-  const detail = body?.detail
-  if (typeof detail === "string") return detail
-  if (detail?.error === "assessment_incomplete") {
-    const where = detail.module ? ` (${detail.module})` : ""
-    return `Assessment could not be completed${where}: ${detail.reason ?? "no reason given"}`
+// GeoJSON from the ?geo= URL param (base64-encoded FeatureCollection from
+// PHAST), read once when the module loads. null when absent or undecodable.
+const GEO_AT_LOAD = (() => {
+  const geoParam = new URLSearchParams(window.location.search).get('geo')
+  if (!geoParam) return null
+  try {
+    const bytes = Uint8Array.from(atob(geoParam), char => char.charCodeAt(0))
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return null
   }
-  if (Array.isArray(detail)) {
-    const msgs = detail.map(d => d?.msg).filter(Boolean)
-    if (msgs.length) return msgs.join("; ")
-  }
-  return `Assessment failed (HTTP ${status})`
-}
+})()
 
+// One screen at a time: entry → loading → result or error. A run always
+// clears the previous result, so a failed run never leaves another parcel's
+// verdict on screen.
 function App() {
-  const [geoJsonInput, setGeoJsonInput] = useState('')
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [input, setInput] = useState(GEO_AT_LOAD ?? '')
+  // A parcel from PHAST starts on the loading screen; the effect below
+  // sends it.
+  const [screen, setScreen] = useState(() => (
+    GEO_AT_LOAD === null ? { name: 'entry' } : { name: 'loading', startedAt: Date.now() }
+  ))
+  const controllerRef = useRef(null)
 
-  const runAssessment = async (input) => {
+  // Sends the request and moves to the result or error screen. The caller
+  // has already shown the loading screen.
+  const execute = async (text) => {
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
     try {
-      setLoading(true)
-      setError(null)
-      // Drop the previous result so a failed run never leaves another
-      // parcel's verdict on screen.
-      setData(null)
-
-      let parsedGeoJson;
-      try {
-        parsedGeoJson = JSON.parse(input)
-      } catch {
-        throw new Error("Invalid JSON format")
-      }
-
-      // Extract the bare geometry depending on the GeoJSON type
-      let geometry;
-      if (parsedGeoJson.type === "FeatureCollection") {
-        if (!parsedGeoJson.features || parsedGeoJson.features.length === 0) {
-          throw new Error("FeatureCollection is empty")
-        }
-        // PHIVOLCS ground truth tools sometimes output a Polyline as the first feature
-        // Sweep through to find the actual Polygon descriptor
-        const polyFeature = parsedGeoJson.features.find(f =>
-          f.geometry && f.geometry.type === "Polygon"
-        );
-        if (!polyFeature) {
-          throw new Error("No Polygon feature found in the FeatureCollection")
-        }
-        geometry = polyFeature.geometry;
-      } else if (parsedGeoJson.type === "Feature") {
-        geometry = parsedGeoJson.geometry;
-      } else {
-        geometry = parsedGeoJson;
-      }
-
-      // Relative by default, so one build artifact works at every tier — dev
-      // server, LAN host, internal DNS name — with no rebuild. In dev, Vite
-      // proxies /api to the backend; in production the reverse proxy does.
-      // Set VITE_API_URL only to point a build at some other origin.
-      const apiBase = import.meta.env.VITE_API_URL ?? ""
-      const response = await fetch(`${apiBase}/api/v1/assess`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          project_id: "web-ui-assessment",
-          geometry: geometry,
-          config: { mode: "compliance" }
-        })
-      })
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(describeError(response.status, errData))
-      }
-
-      const result = await response.json()
-      setData(result)
+      const { geometry } = extractPolygon(text)
+      const result = await assess(geometry, controller.signal)
+      if (controller.signal.aborted) return
+      setScreen({ name: 'result', result })
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      if (controller.signal.aborted) return
+      const error = err instanceof AssessmentError ? err : new AssessmentError('invalid', err.message)
+      setScreen({ name: 'error', error })
     }
   }
 
-  const handleRunAssessment = () => runAssessment(geoJsonInput)
+  const runAssessment = (text) => {
+    setScreen({ name: 'loading', startedAt: Date.now() })
+    execute(text)
+  }
 
-  // Auto-load GeoJSON from ?geo= URL param (base64-encoded FeatureCollection from PHAST)
+  const cancel = () => {
+    controllerRef.current?.abort()
+    setScreen({ name: 'entry' })
+  }
+
+  // A parcel sent from PHAST runs straight away. The ref keeps StrictMode's
+  // second effect pass in dev from posting it twice.
+  const autoRan = useRef(false)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const geoParam = params.get('geo')
-    if (!geoParam) return
-    let decoded
-    try {
-      const bytes = Uint8Array.from(atob(geoParam), char => char.charCodeAt(0))
-      decoded = new TextDecoder().decode(bytes)
-    } catch {
-      return
-    }
-    setGeoJsonInput(decoded)
+    if (GEO_AT_LOAD === null || autoRan.current) return
+    autoRan.current = true
     window.history.replaceState({}, '', window.location.pathname)
-    runAssessment(decoded)
+    // A request to an external system, which is what effects are for. State
+    // only changes synchronously when the decoded GeoJSON fails to parse.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    execute(GEO_AT_LOAD)
   }, [])
 
-  return (
-    <div className="app-layout">
-      <div className="sidebar">
-        <h2>EIL-Calc</h2>
-        <div className="input-group">
-          <label>GeoJSON Polygon:</label>
-          <textarea
-            value={geoJsonInput}
-            onChange={(e) => setGeoJsonInput(e.target.value)}
-            placeholder='{"type": "Polygon", "coordinates": [...] }'
-            rows={15}
-          />
-        </div>
-        <button
-          onClick={handleRunAssessment}
-          disabled={loading || !geoJsonInput.trim()}
-        >
-          {loading ? "Computing..." : "Run Assessment"}
-        </button>
-        {error && <div className="error-message">{error}</div>}
-      </div>
-
-      <div className="main-content">
-        {data ? (
-          <div className="viz-container">
-            <EILViz data={data} />
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Paste a GeoJSON polygon and click "Run Assessment" to view the EIL hazard map.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  switch (screen.name) {
+    case 'loading':
+      return <LoadingScreen startedAt={screen.startedAt} onCancel={cancel} />
+    case 'error':
+      return (
+        <ErrorScreen
+          error={screen.error}
+          onEdit={() => setScreen({ name: 'entry' })}
+          onRetry={() => runAssessment(input)}
+        />
+      )
+    case 'result':
+      return (
+        <ResultBoundary onNewAssessment={() => setScreen({ name: 'entry' })}>
+          <ResultScreen result={screen.result} onNewAssessment={() => setScreen({ name: 'entry' })} />
+        </ResultBoundary>
+      )
+    default:
+      return <EntryScreen input={input} onInputChange={setInput} onRun={() => runAssessment(input)} />
+  }
 }
 
 export default App

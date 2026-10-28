@@ -1,103 +1,186 @@
 :root {
-  /* Geologically tinted color system (hue 160: Forest Green/Teal) */
-  --color-primary: oklch(0.68 0.16 160);
-  --color-primary-hover: oklch(0.62 0.15 160);
-  --color-primary-active: oklch(0.55 0.14 160);
-  --color-primary-bg: oklch(0.68 0.16 160 / 0.1);
-  --color-primary-bg-subtle: oklch(0.68 0.16 160 / 0.04);
-  --color-primary-border: oklch(0.68 0.16 160 / 0.3);
+  /* Survey-instrument palette. Neutrals sit on hue 210 (cool slate). The
+     accent is kept for controls and links only, so it never reads as a
+     status. */
+  --color-bg: oklch(0.155 0.012 210);
+  --color-bg-band: oklch(0.175 0.014 210);       /* Verdict band */
+  --color-surface: oklch(0.195 0.014 210);       /* Cards */
+  --color-surface-raised: oklch(0.21 0.018 210); /* Selected check card */
+  --color-surface-sunken: oklch(0.13 0.01 210);  /* Heatmap well, code */
+  --color-input-bg: oklch(0.12 0.01 210);
+  --color-track: oklch(0.26 0.016 210);          /* Bar tracks, chart grid, row rules */
+  --color-border: oklch(0.30 0.016 210);
+  --color-border-strong: oklch(0.38 0.02 210);   /* Secondary buttons, inputs, chart axes */
+  --color-border-hover: oklch(0.42 0.02 210);
 
-  /* Tinted dark neutrals */
-  --color-bg-base: oklch(0.12 0.008 160);      /* Deep earth tone */
-  --color-bg-surface: oklch(0.16 0.01 160);   /* Cards and sidebar */
-  --color-bg-input: oklch(0.10 0.008 160);     /* Textareas and inputs */
-  --color-border: oklch(0.24 0.015 160);      /* Subtle separator */
-  --color-border-hover: oklch(0.32 0.02 160);
-  --color-shadow: rgba(0, 0, 0, 0.15);
-  --color-shadow-strong: rgba(0, 0, 0, 0.4);
+  --color-text-high: oklch(0.96 0.006 210);
+  --color-text: oklch(0.82 0.01 210);
+  --color-text-low: oklch(0.68 0.012 210);
 
-  /* Text color scale with high contrast and optical compensations */
-  --color-text-high: oklch(0.95 0.005 160);
-  --color-text-med: oklch(0.78 0.008 160);
-  --color-text-low: oklch(0.54 0.008 160);
-  /* Translucent white text inside dashboard panels */
-  --color-text-code: rgba(255, 255, 255, 0.45);
-  --color-text-prose: rgba(255, 255, 255, 0.4);
-  --color-text-footnote: rgba(255, 255, 255, 0.25);
+  --color-accent: oklch(0.80 0.10 215);
+  --color-accent-hover: oklch(0.88 0.08 215);
+  --color-on-accent: oklch(0.18 0.03 215);
 
-  /* Status: badges, assessment-logic keywords, runout verdict box */
-  --color-safe: #4ade80;
-  --color-safe-bg: rgba(34, 197, 94, 0.08);
-  --color-safe-bg-subtle: rgba(34, 197, 94, 0.04);
-  --color-safe-border: rgba(34, 197, 94, 0.3);
-  --color-safe-border-subtle: rgba(34, 197, 94, 0.2);
-  --color-review: #fbbf24;
-  --color-review-bg: rgba(251, 191, 36, 0.08);
-  --color-review-border: rgba(251, 191, 36, 0.3);
-  --color-danger: #f87171;
-  --color-danger-bg: rgba(239, 68, 68, 0.08);
-  --color-danger-bg-subtle: rgba(220, 60, 60, 0.04);
-  --color-danger-border: rgba(239, 68, 68, 0.3);
-  --color-danger-border-subtle: rgba(220, 60, 60, 0.2);
+  /* Status. Each verdict also differs by fill, border style and icon (see
+     StatusBadge), so none of them depends on hue alone. */
+  --color-safe: oklch(0.80 0.13 165);
+  --color-safe-text: oklch(0.85 0.115 165);
+  --color-review: oklch(0.84 0.15 82);
+  --color-review-text: oklch(0.87 0.135 84);
+  --color-danger: oklch(0.70 0.19 33);
+  --color-danger-text: oklch(0.78 0.16 33);
+  --color-danger-line: oklch(0.74 0.17 33);
+  --color-on-danger: oklch(0.17 0.03 33);
 
-  /* Slope scale. makeSlopeColor() (src/lib/slopeColor.js) interpolates the
-     heatmap and legend between these four stops: safe-low at 0°, safe-high
-     at the flag threshold, flag-high at the susceptible threshold, and
-     susceptible-high at threshold + 9°. */
-  --color-slope-safe-low: rgb(20, 160, 130);
-  --color-slope-safe-high: rgb(50, 120, 80);
-  --color-slope-flag-high: rgb(250, 60, 20);
-  --color-slope-susceptible-high: rgb(230, 20, 20);
-  /* Colour-key dots under the heatmap */
-  --color-slope-key-safe: #14a37a;
-  --color-slope-key-flag: #d97706;
-  --color-slope-key-susceptible: #ef4444;
-  --color-slope-key-max: white;
+  /* Slope scale. makeSlopeColor() (src/lib/slopeColor.js) and the legend
+     interpolate within each band; lightness jumps at the 14° and 16°
+     thresholds so the bands stay apart without colour vision.
+     Susceptible runs from its threshold to threshold + 9°. */
+  --color-slope-safe-low: oklch(0.34 0.05 200);
+  --color-slope-safe-high: oklch(0.54 0.09 168);
+  --color-slope-flag-low: oklch(0.76 0.14 72);
+  --color-slope-flag-high: oklch(0.84 0.14 86);
+  --color-slope-susceptible-low: oklch(0.64 0.19 36);
+  --color-slope-susceptible-high: oklch(0.54 0.21 24);
+  /* Colour-key swatches under the heatmap: one mid-band sample each */
+  --color-slope-key-safe: oklch(0.46 0.08 175);
+  --color-slope-key-flag: oklch(0.80 0.14 80);
+  --color-slope-key-susceptible: oklch(0.62 0.20 30);
+  --color-heatmap-max: oklch(0.98 0 0);
 
-  /* Heatmap canvas overlays */
-  --color-heatmap-frame: rgba(255, 255, 255, 0.7);
-  --color-heatmap-grid: rgba(0, 0, 0, 0.12);
-  --color-heatmap-max: rgba(255, 255, 255, 0.95);
-  --color-heatmap-label: rgba(255, 255, 255, 0.8);
+  /* Elevation profile */
+  --color-profile-fill: oklch(0.46 0.06 190 / 0.35);
+  --color-profile-line: oklch(0.86 0.06 190);
 
-  /* Transect chart */
-  --color-chart-grid: rgba(255, 255, 255, 0.06);
-  --color-chart-axis: rgba(255, 255, 255, 0.3);
-  --color-chart-tick: rgba(255, 255, 255, 0.45);
-  --color-chart-elev-line: rgba(100, 220, 150, 0.95);
-  --color-chart-elev-fill-top: #50a078;
-  --color-chart-elev-fill-bottom: #28503c;
-  --color-chart-runout-line: rgba(220, 60, 60, 0.55);
-  --color-chart-runout-label: rgba(220, 60, 60, 0.85);
-  --color-chart-runout-zone: rgba(220, 60, 60, 0.5);
-  --color-chart-peak: #f87171;
-  --color-chart-site: #60a5fa;
-  --color-chart-marker-stroke: #fff;
+  --gutter: 32px; /* Page side padding */
 
-  /* Transect path picker */
-  --color-select-bg: rgba(255, 255, 255, 0.05);
-  --color-select-text: #e2e8f0;
-  --color-select-border: rgba(255, 255, 255, 0.1);
-  --color-select-option-bg: #0f1923;
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   color-scheme: dark;
-  background-color: var(--color-bg-base);
-  color: var(--color-text-med);
-  font-size: 16px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Only while the dashboard (.app) is mounted, as when this lived in a <style>
-   block inside EILViz. Applying it globally would narrow the empty-state
-   sidebar from 408px to 360px; see README "Known limitations". :where()
-   keeps the specificity at zero so element rules like `button` still win. */
-:where(:root:has(.app)) *, :where(:root:has(.app)) *::before, :where(:root:has(.app)) *::after { box-sizing: border-box; margin: 0; padding: 0; }
+@media (max-width: 600px) {
+  :root { --gutter: 16px; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--color-bg-base);
+  background-color: var(--color-bg);
+}
+
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { color: var(--color-text-high); font-weight: 600; }
+
+a { color: var(--color-accent); }
+a:hover { color: var(--color-accent-hover); }
+
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.mono { font-family: var(--font-mono); }
+.text-low { color: var(--color-text-low); }
+.text-high { color: var(--color-text-high); }
+
+.eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-low);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn-primary {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn-secondary {
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-high);
+}
+.btn-secondary:hover:not(:disabled) { border-color: var(--color-border-hover); }
+.btn-large { min-height: 48px; padding: 0 28px; font-size: 16px; }
+
+.explainer { padding: 16px 18px; }
+.explainer summary {
+  cursor: pointer;
+  min-height: 28px;
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+.explainer-body {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Print report: a light token set, since browsers drop dark backgrounds by
+   default and would leave pale text on white paper. */
+@media print {
+  :root {
+    color-scheme: light;
+    --color-bg: #fff;
+    --color-bg-band: #fff;
+    --color-surface: #fff;
+    --color-surface-raised: #fff;
+    --color-surface-sunken: oklch(0.95 0.004 210);
+    --color-track: oklch(0.88 0.006 210);
+    --color-border: oklch(0.80 0.008 210);
+    --color-border-strong: oklch(0.65 0.01 210);
+    --color-text-high: oklch(0.15 0.01 210);
+    --color-text: oklch(0.25 0.01 210);
+    --color-text-low: oklch(0.42 0.01 210);
+    --color-accent: oklch(0.45 0.10 230);
+    --color-safe-text: oklch(0.42 0.12 165);
+    --color-review-text: oklch(0.50 0.13 70);
+    --color-danger-text: oklch(0.48 0.18 30);
+    --color-profile-line: oklch(0.35 0.06 200);
+    --color-profile-fill: oklch(0.70 0.05 190 / 0.35);
+  }
+  .no-print { display: none !important; }
+  * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }

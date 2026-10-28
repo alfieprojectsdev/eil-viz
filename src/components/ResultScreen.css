@@ -1,0 +1,115 @@
+.verdict-band {
+  padding: 28px var(--gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-band);
+}
+.verdict-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.verdict-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+.verdict-text { display: flex; flex-direction: column; gap: 2px; }
+.verdict-headline {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+
+.check-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  gap: 16px;
+}
+.check-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.check-card:hover { border-color: var(--color-border-hover); }
+.check-card-active,
+.check-card-active:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
+}
+.check-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+}
+.check-card-active .check-card-title { color: var(--color-accent); }
+.check-card-sentence { font-size: 17px; color: var(--color-text-high); }
+
+.result-main {
+  flex: 1;
+  padding: 28px var(--gutter) 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+.result-figure {
+  flex: 999 1 640px;
+  min-width: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.result-figure-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.result-figure-head h2 { font-size: 18px; }
+.result-figure-head span { font-size: 14px; }
+.result-side {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.key-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 14px;
+}
+.key-item { display: inline-flex; align-items: center; gap: 8px; }
+
+.result-footer {
+  padding: 14px var(--gutter);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: 13px;
+}
+
+@media print {
+  .check-card { break-inside: avoid; }
+  .result-main, .verdict-band { padding-left: 0; padding-right: 0; }
+}

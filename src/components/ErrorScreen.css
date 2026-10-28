@@ -1,0 +1,48 @@
+.error-page {
+  flex: 1;
+  padding: 80px var(--gutter);
+  display: flex;
+  justify-content: center;
+}
+.error-body {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.error-head { display: flex; gap: 18px; align-items: flex-start; }
+.error-icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklch, var(--color-review) 14%, transparent);
+  color: var(--color-review);
+}
+.error-title { display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.error-title h1 { font-size: 28px; letter-spacing: -0.015em; }
+.error-detail {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.error-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.error-fact { display: flex; flex-direction: column; gap: 4px; }
+.error-fact > span:first-child { font-size: 13px; }
+.error-reason {
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-sunken);
+  overflow-wrap: anywhere;
+}
+.error-advice { font-size: 14px; }
+.error-actions { display: flex; flex-wrap: wrap; gap: 12px; }
