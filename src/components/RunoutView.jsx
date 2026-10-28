@@ -18,13 +18,14 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
   const transects = transectsOf(dep);
 
   if (noRunoutSource(dep, transects)) {
+    const radius = searchRadius(dep);
     return (
       <>
         <section className="card result-figure" aria-labelledby="profile-heading">
           <div className="result-figure-head">
             <h2 id="profile-heading">No path from higher ground</h2>
           </div>
-          <p>eil-calc found no ground higher than the lot {searchRadius(dep) === null ? "nearby" : `within ${formatMetres(searchRadius(dep))} of it`}, so no debris path reaches the lot. The runout check passes on that basis.</p>
+          <p>eil-calc found no ground higher than the lot {radius === null ? "nearby" : `within ${formatMetres(radius)} of it`}, so no debris path reaches the lot. The runout check passes on that basis.</p>
         </section>
         <aside className="result-side"><Explainer /></aside>
       </>
