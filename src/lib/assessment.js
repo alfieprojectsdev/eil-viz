@@ -71,11 +71,18 @@ export function transectsOf(dep) {
   return [];
 }
 
+// How far eil-calc looked for higher ground, for the no-source wording. The
+// distance H runs along the descent path, so it can exceed this.
+export function searchRadius(dep) {
+  return finite(dep?.assessment?.search_radius_m);
+}
+
 // eil-calc returns SAFE with a zero drop and a one-point path when it finds
 // no higher ground near the lot. Showing "H 0 m > 3 × ΔE 0 m" for that would
 // be false, so the runout view treats it as its own case.
 export function noRunoutSource(dep, transects) {
-  if (dep?.assessment?.no_source_found === true) return true;
+  // eil-calc 2333ef8+ flags it; older backends are recognised by shape.
+  if (typeof dep?.assessment?.no_source_found === "boolean") return dep.assessment.no_source_found;
   if (transects.length === 0) return true;
   return transects.length === 1
     && transects[0]?.metrics?.delta_e === 0

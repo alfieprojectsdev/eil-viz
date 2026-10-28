@@ -68,6 +68,8 @@
   align-items: flex-start;
   gap: 24px;
 }
+/* The display rule above would otherwise override the hidden attribute. */
+.result-main[hidden] { display: none; }
 .result-figure {
   flex: 999 1 640px;
   min-width: 0;

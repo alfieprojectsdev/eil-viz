@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   displayVerdict, slopeRules, slopeCoverage, formatPct, formatMetres,
-  transectsOf, noRunoutSource, toneOf,
+  transectsOf, noRunoutSource, searchRadius, toneOf,
 } from "../lib/assessment";
 import { SLOPE_STATUS } from "../constants/status";
 import AppHeader from "./AppHeader";
@@ -32,7 +32,10 @@ function slopeSentence(slope) {
 
 function runoutSentence(dep) {
   const transects = transectsOf(dep);
-  if (noRunoutSource(dep, transects)) return <>No higher ground near the lot could send debris onto it.</>;
+  if (noRunoutSource(dep, transects)) {
+    const radius = searchRadius(dep);
+    return <>No higher ground {radius === null ? "near the lot" : <>within <strong className="mono">{formatMetres(radius)}</strong></>}, so no debris path reaches the lot.</>;
+  }
   const m = transects[0].metrics;
   return (
     <>The lot is <strong className="mono">{formatMetres(m.horizontal_distance_h)}</strong> from the worst peak; debris can travel <strong className="mono">{formatMetres(m.required_runout_3x)}</strong>.</>

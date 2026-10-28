@@ -112,11 +112,12 @@ phase_1_compliance
     metrics.coverage_susceptible, metrics.coverage_flag            fractions 0-1 (eil-calc a85ec01+)
     assessment.status          "SAFE" | "FLAG FOR REVIEW" | "SUSCEPTIBLE"
     assessment.coverage_limit_susceptible, coverage_limit_flag     0.015, 0.10 (eil-calc a85ec01+)
-    assessment.threshold_flag_deg, threshold_susceptible_deg       optional; 14°, 16° fallback
+    assessment.threshold_flag_deg, threshold_susceptible_deg       14, 16 (eil-calc 2333ef8+)
     _viz_grid                  2-D array of slope degrees; null outside the parcel
   depositional_hazard
     assessment.status          "SAFE (Beyond Runout)" | "PRONE (Within Runout Zone)"
-    assessment.no_source_found optional; see below
+    assessment.no_source_found true only for the no-peak fallback (eil-calc 2333ef8+)
+    assessment.search_radius_m 1000 today; quoted in the no-peak wording
     _viz_transects[]           up to 3, worst first
       metrics                  elevation_peak, elevation_site, delta_e, horizontal_distance_h, required_runout_3x
       assessment               status, is_compliant
@@ -127,11 +128,26 @@ The response also carries fields the UI ignores: `final_decision` (always `"PEND
 
 Thresholds and limits are read from the response when present. `src/constants/status.js` keeps hand-copied fallbacks for older backends, plus the status strings. When eil-calc's `eil_status.py` or `slope_stability.py` changes, update that file to match. A backend without the coverage fields still works; the coverage card says the shares aren't reported.
 
-When eil-calc finds no higher ground near the lot it returns SAFE with a zero drop and a one-point path. The runout view shows that as "No path from higher ground" instead of `H 0 m > 3 × ΔE 0 m`. It recognises the case by `no_source_found: true` if present, otherwise by `delta_e == 0` with a single path point.
+When eil-calc finds no higher ground near the lot it returns SAFE with a zero drop and a one-point path. The runout view shows that as "No path from higher ground" instead of `H 0 m > 3 × ΔE 0 m`. It reads `no_source_found` when the backend sends it, and otherwise recognises the case by `delta_e == 0` with a single path point. The wording says "no higher ground within `search_radius_m`"; it doesn't treat the radius as a limit on H, which is measured along the descent path and can be longer.
 
-Errors: 400 for invalid geometry, 503 when the DEM is missing, 500 otherwise, all with a string `detail`. When a module can't produce a verdict, eil-calc returns **422** with an object `detail` of `{ "error": "assessment_incomplete", "module", "reason" }` rather than a partial 200. Each kind gets its own error screen (`src/components/ErrorScreen.jsx`), and every one says the parcel is not certified. A response the dashboard can't draw lands on the same screen through `ResultBoundary`.
+Errors: 400 for invalid geometry, 503 when the DEM is missing, 500 otherwise, all with a string `detail`. When a module can't produce a verdict, eil-calc returns **422** with an object `detail` of `{ "error": "assessment_incomplete", "module", "reason" }` rather than a partial 200. Each kind gets its own error screen (`src/components/ErrorScreen.jsx`), and every one says the parcel is not certified. Only text that's safe for assessors is shown as eil-calc's reason: the 400 geometry message, FastAPI's validation messages, and the fixed 422 reasons from `slope_stability` and `depositional_hazard`. The 503 and 500 strings can contain server file paths or internal state, and the `orchestrator` 422 echoes internal status strings, so those get fixed wording and the raw body goes to the browser console. A response the dashboard can't draw lands on the same screen through `ResultBoundary`.
 
 The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_status` says certified while a check failed, the verdict shows NOT CERTIFIED and says the two disagree.
+
+## Fixtures
+
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at b58782c. Each file is `{ request, status_code, response }`:
+
+| File | Outcome |
+|---|---|
+| `certified_safe.json` | CERTIFIED SAFE, one measured path |
+| `certified_safe_no_source.json` | CERTIFIED SAFE, no higher ground (`no_source_found`) |
+| `manual_review_flag.json` | MANUAL REVIEW REQUIRED, 77.6% in the 14–16° band |
+| `not_certified_susceptible.json` | NOT CERTIFIED on slope, runout SAFE |
+| `not_certified_prone.json` | NOT CERTIFIED on runout, worst path PRONE and the second SAFE |
+| `assessment_incomplete_422.json` | 422 from `slope_stability` |
+
+The 200s are full runs on about 31 m parcels over eil-calc's IfSAR test tile. Nothing imports them; they're for checking the UI by hand (the dev server serves them at `/fixtures/responses/<name>.json`). eil-calc regenerates its copies with `generate_response_fixtures.py`; copy them again when the contract changes.
 
 ## What you see on screen (plain-language guide for reviewers)
 
@@ -208,11 +224,10 @@ eil-viz/
 │   │   ├── geojson.js          # Pulls the Polygon out of pasted GeoJSON
 │   │   ├── slopeColor.js       # Slope → colour, between the --color-slope-* tokens
 │   │   └── tokens.js           # Reads --color-* tokens for canvas, which takes plain colour strings
-│   ├── data/
-│   │   └── sample_payload.json # Old captured response; not imported anywhere
 │   ├── App.jsx                 # Screen state, ?geo= handling, cancel
 │   ├── index.css               # Design tokens (--color-*), fonts, shared button/card styles, print tokens
 │   └── main.jsx                # React mount point
+├── fixtures/responses/      # Real eil-calc responses for manual checks (see Fixtures)
 ├── Dockerfile                  # node:22 build → nginx:alpine serve
 ├── nginx.conf.template         # SPA fallback + /api/ reverse proxy
 ├── vite.config.js              # React plugin + dev /api proxy
@@ -225,9 +240,9 @@ eil-viz/
 ## Known limitations
 
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
-- `src/data/sample_payload.json` isn't imported anywhere and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
 - The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's labels get small there.
 - Dark theme only on screen. The light colours exist only in the print stylesheet.
 - No map: the heatmap is an abstract grid, because the app has no offline tiles and eil-calc returns no coordinates for the grid.
-- Cancel stops the browser waiting; eil-calc may keep computing the abandoned request.
+- Cancel stops the browser waiting, but eil-calc runs the request to completion anyway (`assess_parcel` is a sync handler, so a client disconnect doesn't stop it).
+- `_viz_grid` is eil-calc's whole 500 m slope window, about 207 × 207 cells (roughly 250 KB) for a 31 m parcel's 49 values. The heatmap crops to the parcel, but the payload isn't trimmed.

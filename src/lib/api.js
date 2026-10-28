@@ -22,12 +22,38 @@ export class AssessmentError extends Error {
 // eil-calc's `detail` is a string for 400/503/500, an object for the 422 it
 // returns when an assessment can't be completed, and a list for FastAPI's own
 // request-validation errors.
+//
+// Only text that's safe for assessors becomes `reason`, which the error
+// screen labels as eil-calc's. Per eil-calc: the 503 and 500 strings carry
+// exception text (file paths, internal state), and the orchestrator 422
+// echoes internal status strings, so those get fixed wording here and the
+// raw body goes to the console only.
 export function classifyError(status, body) {
   const detail = body?.detail;
   if (detail?.error === "assessment_incomplete") {
+    if (detail.module === "orchestrator") {
+      return new AssessmentError("incomplete",
+        "eil-calc returned a result it couldn't classify, so it refused to certify.",
+        { status, module: detail.module });
+    }
     const reason = detail.reason ?? "No reason given";
     return new AssessmentError("incomplete", reason, { status, module: detail.module, reason });
   }
+
+  const kind = status === 400 || status === 422 ? "invalid"
+    : status === 503 ? "unavailable"
+    : status === 504 ? "timeout"
+    : "server";
+
+  if (kind === "unavailable") {
+    return new AssessmentError(kind, "eil-calc couldn't load its elevation data.", { status });
+  }
+  if (kind === "server" && detail !== undefined) {
+    return new AssessmentError(kind, "eil-calc hit an internal error.", { status });
+  }
+
+  // 400 carries shapely's message about the pasted geometry, and FastAPI's
+  // list names the request fields: both about the assessor's own input.
   let reason;
   if (typeof detail === "string") reason = detail;
   else if (Array.isArray(detail)) reason = detail.map(d => d?.msg).filter(Boolean).join("; ");
@@ -35,11 +61,6 @@ export function classifyError(status, body) {
   // Vite proxy with no backend, or nginx), so `reason` stays unset and the
   // error screen doesn't attribute the message to eil-calc.
   const message = reason || `No reason given (HTTP ${status})`;
-
-  const kind = status === 400 || status === 422 ? "invalid"
-    : status === 503 ? "unavailable"
-    : status === 504 ? "timeout"
-    : "server";
   return new AssessmentError(kind, message, { status, reason: reason || undefined });
 }
 
@@ -72,6 +93,9 @@ export async function assess(geometry, signal) {
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
+      // The full body, for whoever reports the problem; the screen shows
+      // only what classifyError lets through.
+      console.error("eil-calc error response", response.status, body);
       throw classifyError(response.status, body);
     }
     try {

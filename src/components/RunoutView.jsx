@@ -1,4 +1,4 @@
-import { transectsOf, noRunoutSource, formatMetres } from "../lib/assessment";
+import { transectsOf, noRunoutSource, searchRadius, formatMetres } from "../lib/assessment";
 import TransectProfile from "./TransectProfile";
 import "./RunoutView.css";
 
@@ -24,7 +24,7 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
           <div className="result-figure-head">
             <h2 id="profile-heading">No path from higher ground</h2>
           </div>
-          <p>eil-calc found no peak near the lot that sits above it, so no debris path reaches the lot. The runout check passes on that basis.</p>
+          <p>eil-calc found no ground higher than the lot {searchRadius(dep) === null ? "nearby" : `within ${formatMetres(searchRadius(dep))} of it`}, so no debris path reaches the lot. The runout check passes on that basis.</p>
         </section>
         <aside className="result-side"><Explainer /></aside>
       </>

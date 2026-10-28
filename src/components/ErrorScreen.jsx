@@ -40,7 +40,7 @@ const COPY = {
 // doesn't recognise.
 function incompleteAdvice(module) {
   if (module === "orchestrator") {
-    return "eil-calc produced a result it doesn't recognise and refused to certify. Report this; trying again won't help.";
+    return "This is a fault in eil-calc, not in the boundary. Report it; trying again won't help.";
   }
   return "This happens when the boundary covers no usable elevation pixels, for example when it's smaller than one pixel or lies outside the elevation map. Check the boundary is in the right place.";
 }

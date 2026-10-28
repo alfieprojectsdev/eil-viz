@@ -1,0 +1,28 @@
+{
+  "request": {
+    "project_id": "assessment_incomplete",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [124.89986, 8.09986],
+          [124.90014, 8.09986],
+          [124.90014, 8.10014],
+          [124.89986, 8.10014],
+          [124.89986, 8.09986]
+        ]
+      ]
+    },
+    "config": {
+      "mode": "compliance"
+    }
+  },
+  "status_code": 422,
+  "response": {
+    "detail": {
+      "error": "assessment_incomplete",
+      "module": "slope_stability",
+      "reason": "No valid slope data inside the parcel after masking"
+    }
+  }
+}
