@@ -5,6 +5,9 @@ import "./SlopeHeatmap.css";
 
 const MAX_HEIGHT = 560;
 const MAX_CELL = 48;
+// Drawing width while the well is hidden (the inactive tab). CSS scales the
+// canvas down to whatever space it gets, e.g. on a printed page.
+const FALLBACK_WIDTH = 720;
 
 // Rows and columns that hold parcel pixels, the steepest pixel, and the count.
 function summarise(grid) {
@@ -47,7 +50,7 @@ export default function SlopeHeatmap({ grid, rules }) {
 
   const rows = info ? info.maxR - info.minR + 1 : 0;
   const cols = info ? info.maxC - info.minC + 1 : 0;
-  const cell = info && width ? Math.min(width / cols, MAX_HEIGHT / rows, MAX_CELL) : 0;
+  const cell = info ? Math.min((width || FALLBACK_WIDTH) / cols, MAX_HEIGHT / rows, MAX_CELL) : 0;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -93,19 +96,20 @@ export default function SlopeHeatmap({ grid, rules }) {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const r = info.minR + Math.floor(y / cell);
-    const c = info.minC + Math.floor(x / cell);
+    // Drawn cell size times however much CSS has scaled the canvas.
+    const shown = cell * (rect.width / (cols * cell));
+    const r = info.minR + Math.floor(y / shown);
+    const c = info.minC + Math.floor(x / shown);
     const v = grid[r]?.[c];
     setHovered(typeof v === "number" ? { v, x, y } : null);
   };
 
   return (
     <div className="heatmap-well" ref={wellRef}>
-      <div className="heatmap-stage" style={{ width: cols * cell, height: rows * cell }}>
+      <div className="heatmap-stage" style={{ width: cols * cell }}>
         <canvas
           ref={canvasRef}
           className="heatmap-canvas"
-          style={{ width: cols * cell, height: rows * cell }}
           role="img"
           aria-label={`Slope heatmap of the lot: ${info.count} pixels, the steepest ${info.max.v.toFixed(1)}° (outlined).`}
           onMouseMove={handleMove}

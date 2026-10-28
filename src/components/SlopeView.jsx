@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { slopeRules, slopeCoverage, formatPct } from "../lib/assessment";
-import { slopeGradient, SUSCEPTIBLE_SPAN_DEG } from "../lib/slopeColor";
+import { slopeGradient, slopeScaleMax, slopeScalePosition } from "../lib/slopeColor";
 import { SLOPE_STATUS } from "../constants/status";
 import SlopeHeatmap from "./SlopeHeatmap";
 import CoverageBar from "./CoverageBar";
 import "./SlopeView.css";
 
 function SlopeLegend({ rules }) {
-  const max = rules.susceptibleDeg + SUSCEPTIBLE_SPAN_DEG;
-  const at = (deg) => `${(deg / max) * 100}%`;
+  const max = slopeScaleMax(rules);
+  const at = (deg) => slopeScalePosition(deg, rules);
   return (
     <div className="slope-legend">
       <div className="slope-legend-bar" aria-hidden="true" style={{ background: slopeGradient(rules) }} />

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { flushSync } from "react-dom";
+import { useState } from "react";
 import {
   displayVerdict, slopeRules, slopeCoverage, formatPct, formatMetres,
   transectsOf, noRunoutSource, toneOf,
@@ -26,7 +25,9 @@ function slopeSentence(slope) {
   if (status === SLOPE_STATUS.FLAG) {
     return <>{flag} of the lot is between {rules.flagDeg}° and {rules.susceptibleDeg}°. The limit is {formatPct(rules.flagLimit)}%.</>;
   }
-  return <>{sus} is steeper than {rules.susceptibleDeg}° and {flag} is between {rules.flagDeg}° and {rules.susceptibleDeg}°. Both are under their limits.</>;
+  const shares = <>{sus} is steeper than {rules.susceptibleDeg}° and {flag} is between {rules.flagDeg}° and {rules.susceptibleDeg}°.</>;
+  if (status === SLOPE_STATUS.SAFE) return <>{shares} Both are under their limits.</>;
+  return <>{shares} eil-calc returned a status this page doesn't recognise.</>;
 }
 
 function runoutSentence(dep) {
@@ -44,20 +45,6 @@ export default function ResultScreen({ result, onNewAssessment }) {
   const [check, setCheck] = useState("slope");
   // Lives here so the chosen path survives switching checks.
   const [pathIndex, setPathIndex] = useState(0);
-  // A printed report carries both checks, not just the one on screen.
-  // flushSync, because the browser lays out the print copy as soon as
-  // beforeprint returns.
-  const [printing, setPrinting] = useState(false);
-  useEffect(() => {
-    const before = () => flushSync(() => setPrinting(true));
-    const after = () => setPrinting(false);
-    window.addEventListener("beforeprint", before);
-    window.addEventListener("afterprint", after);
-    return () => {
-      window.removeEventListener("beforeprint", before);
-      window.removeEventListener("afterprint", after);
-    };
-  }, []);
 
   const compliance = result.phase_1_compliance;
   const slope = compliance.slope_stability;
@@ -113,16 +100,14 @@ export default function ResultScreen({ result, onNewAssessment }) {
         </div>
       </section>
 
-      {(printing || check === "slope") && (
-        <main className="result-main" role="tabpanel" id="panel-slope" aria-labelledby="tab-slope">
-          <SlopeView slope={slope} />
-        </main>
-      )}
-      {(printing || check === "runout") && (
-        <main className="result-main" role="tabpanel" id="panel-runout" aria-labelledby="tab-runout">
-          <RunoutView dep={dep} pathIndex={pathIndex} onSelectPath={setPathIndex} />
-        </main>
-      )}
+      {/* Both stay mounted so the heatmap is already drawn when a printed
+          report, which carries both checks, unhides the other panel. */}
+      <main className="result-main" role="tabpanel" id="panel-slope" aria-labelledby="tab-slope" hidden={check !== "slope"}>
+        <SlopeView slope={slope} />
+      </main>
+      <main className="result-main" role="tabpanel" id="panel-runout" aria-labelledby="tab-runout" hidden={check !== "runout"}>
+        <RunoutView dep={dep} pathIndex={pathIndex} onSelectPath={setPathIndex} />
+      </main>
 
       <footer className="result-footer text-low">
         <span>Phase 1 compliance: slope + runout</span>

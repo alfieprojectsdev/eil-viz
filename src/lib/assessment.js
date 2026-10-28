@@ -83,7 +83,8 @@ export function noRunoutSource(dep, transects) {
 }
 
 // The verdict to display. Follows overall_status, except that CERTIFIED SAFE
-// is only shown when both checks also say SAFE: the UI must never show a
+// is only shown when both checks also say SAFE, and MANUAL REVIEW only when
+// neither check failed: the UI must never show a
 // failed parcel as certified, even if the backend's verdict and its checks
 // disagree.
 export function displayVerdict(compliance) {
@@ -91,8 +92,9 @@ export function displayVerdict(compliance) {
   const slopeTone = toneOf(compliance?.slope_stability?.assessment?.status);
   const runoutTone = toneOf(compliance?.depositional_hazard?.assessment?.status);
   const checksPass = slopeTone === "safe" && runoutTone === "safe";
+  const checkFailed = slopeTone === "danger" || runoutTone === "danger";
 
-  if (overall === OVERALL_STATUS.CERTIFIED && !checksPass) {
+  if ((overall === OVERALL_STATUS.CERTIFIED && !checksPass) || (overall === OVERALL_STATUS.REVIEW && checkFailed)) {
     return {
       status: OVERALL_STATUS.NOT_CERTIFIED,
       tone: "danger",

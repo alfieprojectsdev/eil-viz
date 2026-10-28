@@ -7,8 +7,8 @@
   background: var(--color-surface-sunken);
 }
 .heatmap-empty { padding: 40px 12px; }
-.heatmap-stage { position: relative; }
-.heatmap-canvas { display: block; cursor: crosshair; }
+.heatmap-stage { position: relative; max-width: 100%; }
+.heatmap-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
 .heatmap-north {
   position: absolute;
   top: 6px;

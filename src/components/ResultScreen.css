@@ -110,6 +110,7 @@
 }
 
 @media print {
+  .result-main[hidden] { display: flex; }
   .check-card { break-inside: avoid; }
   .result-main, .verdict-band { padding-left: 0; padding-right: 0; }
 }

@@ -31,10 +31,18 @@ export function makeSlopeColor({ flagDeg, susceptibleDeg }) {
   };
 }
 
+// Top of the legend scale, and where a slope sits along it (CSS percent).
+export function slopeScaleMax({ susceptibleDeg }) {
+  return susceptibleDeg + SUSCEPTIBLE_SPAN_DEG;
+}
+export function slopeScalePosition(deg, rules) {
+  return `${((deg / slopeScaleMax(rules)) * 100).toFixed(2)}%`;
+}
+
 // The same scale as a CSS gradient for the legend, using the tokens directly.
-export function slopeGradient({ flagDeg, susceptibleDeg }) {
-  const max = susceptibleDeg + SUSCEPTIBLE_SPAN_DEG;
-  const at = (deg) => `${((deg / max) * 100).toFixed(2)}%`;
+export function slopeGradient(rules) {
+  const { flagDeg, susceptibleDeg } = rules;
+  const at = (deg) => slopeScalePosition(deg, rules);
   return `linear-gradient(to right in oklch, ${[
     `var(--color-slope-safe-low) 0%`,
     `var(--color-slope-safe-high) ${at(flagDeg)}`,
