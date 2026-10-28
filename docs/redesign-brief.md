@@ -54,7 +54,7 @@ Not available without a backend change: coverage fractions per slope band, parce
 
 ## Questions only Alfie can answer
 
-<!-- Fill in before starting the design. -->
+Still open. The design canvas made a guess for each and the implementation follows those guesses: a Print report button with a light print stylesheet, dark theme only, desktop first, no map, and the sidebar replaced by a New assessment screen.
 
 - Should a result be printable or exportable as a certificate or report?
 - Is a light theme or a mobile/tablet layout wanted?
@@ -66,6 +66,6 @@ Not available without a backend change: coverage fractions per slope band, parce
 
 1. Fix the safety bugs first, because they shouldn't wait for a redesign: the NOT CERTIFIED badge, the 422 message, the hard-coded `5m`. (Done on branch `docs-sync-and-status-fixes`.)
 2. Refactor with no visual change: split `EILViz.jsx` into components, move its `<style>` block into CSS files and replace inline rgba/hex values with tokens. The redesign then lands as token and component changes. (Done on branch `claude/hungry-chatterjee-431f4d`.)
-3. Capture fresh fixtures from eil-calc (one each for CERTIFIED SAFE, MANUAL REVIEW REQUIRED, NOT CERTIFIED, flat parcel, 422) and screenshot every state above. Replace the stale `sample_payload.json`.
-4. Design in Claude from this brief, the screenshots and the fixtures.
-5. Implement the design against the fixtures, then check it live against eil-calc.
+3. Capture fresh fixtures from eil-calc (one each for CERTIFIED SAFE, MANUAL REVIEW REQUIRED, NOT CERTIFIED, flat parcel, 422) and screenshot every state above. Replace the stale `sample_payload.json`. (Skipped for the design, which worked from the source. Fixtures requested from the eil-calc session.)
+4. Design in Claude from this brief, the screenshots and the fixtures. (Done as a private Claude Design canvas, with each guess marked on it.)
+5. Implement the design against the fixtures, then check it live against eil-calc. (Implemented on branch `redesign-survey-instrument` and checked against mocked responses; the live check against eil-calc is still to do.)
