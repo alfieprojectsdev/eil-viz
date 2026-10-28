@@ -1,24 +1,18 @@
-import { SLOPE_STATUS, DEPOSITIONAL_STATUS, OVERALL_STATUS } from "../constants/status";
+import { toneOf } from "../lib/assessment";
+import { TickIcon, ExclaimIcon, CrossIcon } from "./Icons";
 import "./StatusBadge.css";
 
-// Exact matches only: substring checks once let "NOT CERTIFIED" match
-// "CERTIFIED" and render green. Anything unrecognised, PENDING included,
-// falls through to danger.
-const BADGE_CLASS = {
-  [OVERALL_STATUS.CERTIFIED]: "badge-safe",
-  [OVERALL_STATUS.REVIEW]: "badge-review",
-  [OVERALL_STATUS.NOT_CERTIFIED]: "badge-danger",
-  [SLOPE_STATUS.SAFE]: "badge-safe",
-  [SLOPE_STATUS.FLAG]: "badge-review",
-  [SLOPE_STATUS.SUSCEPTIBLE]: "badge-danger",
-  [DEPOSITIONAL_STATUS.SAFE]: "badge-safe",
-  [DEPOSITIONAL_STATUS.PRONE]: "badge-danger",
-};
+const ICON = { safe: TickIcon, review: ExclaimIcon, danger: CrossIcon };
 
-function statusBadge(status) {
-  return BADGE_CLASS[status] ?? "badge-danger";
-}
-
-export default function StatusBadge({ status }) {
-  return <span className={`status-badge ${statusBadge(status)}`}>{status}</span>;
+// Small check-level badge. `label` overrides the text (e.g. "SAFE (beyond
+// runout)"); the tone always comes from the raw status.
+export default function StatusBadge({ status, label }) {
+  const tone = toneOf(status);
+  const Icon = ICON[tone];
+  return (
+    <span className={`status-badge status-badge-${tone}`}>
+      <Icon size={14} />
+      {label ?? status ?? "UNKNOWN"}
+    </span>
+  );
 }

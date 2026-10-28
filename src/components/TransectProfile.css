@@ -1,0 +1,20 @@
+.profile { display: flex; flex-direction: column; gap: 6px; }
+.profile-svg { width: 100%; height: auto; display: block; font-family: var(--font-sans); }
+.profile-zone { fill: color-mix(in oklch, var(--color-danger) 10%, transparent); }
+.profile-grid { stroke: var(--color-track); stroke-width: 1; }
+.profile-axis { stroke: var(--color-border-strong); stroke-width: 1; }
+.profile-tick { font-family: var(--font-mono); font-size: 12px; fill: var(--color-text-low); }
+.profile-area { fill: var(--color-profile-fill); }
+.profile-line { fill: none; stroke: var(--color-profile-line); stroke-width: 2.5; stroke-linejoin: round; }
+.profile-limit { stroke: var(--color-danger-line); stroke-width: 2; stroke-dasharray: 7 5; }
+.profile-limit-label { font-size: 13px; font-weight: 600; fill: var(--color-danger-text); }
+.profile-peak { fill: var(--color-text-high); }
+.profile-label { font-size: 13px; fill: var(--color-text-high); }
+.profile-site { fill: var(--color-accent); stroke: var(--color-bg); stroke-width: 2; }
+.profile-site-label { font-size: 13px; fill: var(--color-accent); }
+.profile-h line { stroke: var(--color-accent); stroke-width: 1.5; }
+.profile-h text { font-family: var(--font-mono); font-size: 12px; fill: var(--color-accent); }
+.profile-hover line { stroke: var(--color-text-low); stroke-width: 1; stroke-dasharray: 2 3; }
+.profile-hover circle { fill: var(--color-text-high); }
+.profile-readout { min-height: 20px; font-size: 13px; color: var(--color-text-low); }
+@media print { .profile-readout { display: none; } }

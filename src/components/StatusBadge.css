@@ -1,12 +1,14 @@
-.badge-safe { background: var(--color-safe-bg); border: 1px solid var(--color-safe-border); color: var(--color-safe); }
-.badge-review { background: var(--color-review-bg); border: 1px solid var(--color-review-border); color: var(--color-review); }
-.badge-danger { background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); color: var(--color-danger); }
 .status-badge {
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 4px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: 6px;
-  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
+.status-badge-safe { background: color-mix(in oklch, var(--color-safe) 14%, transparent); color: var(--color-safe-text); }
+.status-badge-review { background: color-mix(in oklch, var(--color-review) 14%, transparent); color: var(--color-review-text); }
+.status-badge-danger { background: color-mix(in oklch, var(--color-danger) 16%, transparent); color: var(--color-danger-text); }

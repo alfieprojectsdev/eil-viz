@@ -1,15 +1,19 @@
 # EIL-Viz: Earthquake-Induced Landslide Visualization
 
-`eil-viz` is the React frontend for the [`eil-calc`](https://github.com/alfieprojectsdev/eil-calc) Python engine. You give it a land parcel as GeoJSON; it sends the parcel to eil-calc's `POST /api/v1/assess` and draws the result as a slope heatmap and a runout elevation profile.
+`eil-viz` is the React frontend for the [`eil-calc`](https://github.com/alfieprojectsdev/eil-calc) Python engine. You give it a land parcel as GeoJSON; it sends the parcel to eil-calc's `POST /api/v1/assess` and shows the Phase 1 verdict with the two checks behind it: a slope heatmap and a runout elevation profile.
 
-Built with [Vite 7](https://vitejs.dev/), React 19 and Recharts 3.
+Built with [Vite 7](https://vitejs.dev/) and React 19. Charts are plain canvas and SVG; there's no charting library.
 
 ## Features
 
-- Accepts a GeoJSON Feature, a FeatureCollection (the first Polygon feature is used, so a leading LineString is skipped) or a bare Polygon geometry.
-- Slope heatmap drawn on an HTML5 canvas from `_viz_grid`. Blue-green below 14°, amber from 14° to 16°, crimson above 16°, using the breakpoints in `src/constants/status.js`. Hovering shows the slope of one pixel; the steepest pixel gets a white outline; pixels outside the parcel are cropped away.
-- Elevation profile (Recharts `AreaChart`) for each steepest-descent path in `_viz_transects`. eil-calc returns at most three, sorted worst first, and a dropdown switches between them. The overall status badge always shows the worst case, whichever path is selected.
-- Self-hosted DM Sans and Space Mono webfonts in `public/fonts/`, so the page renders on a LAN with no route to Google Fonts. The production build makes no runtime requests to any other origin.
+- Four screens, one at a time: new assessment, running, result, and could-not-complete. A run always clears the previous result, so a failed run never leaves another parcel's verdict on screen.
+- Accepts a GeoJSON Feature, a FeatureCollection (the first Polygon feature is used, so a leading LineString is skipped) or a bare Polygon geometry. The entry screen checks the GeoJSON as you type and won't send anything it can't parse.
+- The verdict comes first, with one sentence per check giving the numbers that decided it. CERTIFIED SAFE, MANUAL REVIEW REQUIRED and NOT CERTIFIED differ in border style, fill and icon as well as colour, and anything unrecognised shows as NOT CERTIFIED.
+- Slope heatmap drawn on a canvas from `_viz_grid`, with the coverage shares (eil-calc `coverage_susceptible` / `coverage_flag`) drawn as bars against their limits. The colour scale jumps in lightness at 14° and 16°.
+- Elevation profile (SVG) for each path in `_viz_transects`, with the 3×ΔE debris reach shaded and the distance H marked.
+- Cancel while running, and a 5-minute client-side limit to match nginx's proxy timeout.
+- Print report: printing lays out both checks on a light background.
+- Self-hosted IBM Plex Sans and IBM Plex Mono in `public/fonts/`, so the page renders on a LAN with no route to Google Fonts. The production build makes no runtime requests to any other origin.
 
 ## Prerequisites
 
@@ -70,10 +74,10 @@ VITE_DEV_API_TARGET=http://192.168.1.10:8000 npm run dev
    ```
    `curl http://127.0.0.1:8000/readyz` reports which DEM it loaded.
 2. Run `npm run dev` here and open `http://localhost:5173`.
-3. Paste a GeoJSON Polygon (or a Feature or FeatureCollection containing one) into the sidebar.
-4. Click **Run Assessment**.
+3. Paste a GeoJSON Polygon (or a Feature or FeatureCollection containing one) into **Parcel boundary**. The line under the box says whether a polygon was found.
+4. Click **Run assessment**.
 
-The app can also be opened from the PHAST Chrome extension (Map Tools → EIL Analysis). PHAST base64-encodes the drawn parcel into a `?geo=` query parameter; on load, `App.jsx` decodes it, strips it from the URL and runs the assessment.
+The app can also be opened from the PHAST Chrome extension (Map Tools → EIL Analysis). PHAST base64-encodes the drawn parcel into a `?geo=` query parameter; on load, `App.jsx` decodes it, strips it from the URL and runs the assessment, starting on the running screen.
 
 ## Deployment (Docker)
 
@@ -86,11 +90,11 @@ docker run -p 8080:80 -e EIL_API_UPSTREAM=host.docker.internal:8000 eil-viz
 
 eil-calc binds `127.0.0.1` by default, so for the example above start it with `EIL_HOST=0.0.0.0` or the container can't reach it.
 
-The `/api/` location has a 300 s proxy timeout because a nationwide-DEM assessment can run past nginx's 60 s default. No compose file is checked in to this repo.
+The `/api/` location has a 300 s proxy timeout because a nationwide-DEM assessment can run past nginx's 60 s default. The app stops waiting at the same 5 minutes (`ASSESS_TIMEOUT_MS` in `src/lib/api.js`), so the dev server, which has no timeout, behaves the same. No compose file is checked in to this repo.
 
 ## Backend contract
 
-The request body sent by `App.jsx`:
+The request body sent by `src/lib/api.js`:
 
 ```json
 { "project_id": "web-ui-assessment", "geometry": { "type": "Polygon", "coordinates": [...] }, "config": { "mode": "compliance" } }
@@ -99,59 +103,94 @@ The request body sent by `App.jsx`:
 The fields of the 200 response that the UI reads (defined by `AssessmentResponse` in eil-calc's `api.py`):
 
 ```text
-project_id                     header
+project_id                     header; hidden when it's the default "web-ui-assessment"
 data_source                    "ifsar" | "srtm" | "local_override" → header chip
 phase_1_compliance
-  overall_status               "CERTIFIED SAFE" | "MANUAL REVIEW REQUIRED" | "NOT CERTIFIED" → top-right badge
+  overall_status               "CERTIFIED SAFE" | "MANUAL REVIEW REQUIRED" | "NOT CERTIFIED" → verdict
   slope_stability
     metrics.max_slope_degrees, metrics.avg_slope_degrees
+    metrics.coverage_susceptible, metrics.coverage_flag            fractions 0-1 (eil-calc a85ec01+)
     assessment.status          "SAFE" | "FLAG FOR REVIEW" | "SUSCEPTIBLE"
+    assessment.coverage_limit_susceptible, coverage_limit_flag     0.015, 0.10 (eil-calc a85ec01+)
+    assessment.threshold_flag_deg, threshold_susceptible_deg       14, 16 (eil-calc 2333ef8+)
     _viz_grid                  2-D array of slope degrees; null outside the parcel
   depositional_hazard
     assessment.status          "SAFE (Beyond Runout)" | "PRONE (Within Runout Zone)"
+    assessment.no_source_found true only for the no-peak fallback (eil-calc 2333ef8+)
+    assessment.search_radius_m 1000 today; quoted in the no-peak wording
     _viz_transects[]           up to 3, worst first
       metrics                  elevation_peak, elevation_site, delta_e, horizontal_distance_h, required_runout_3x
       assessment               status, is_compliant
       path[]                   { dist_m, elev_m }
 ```
 
-The response also carries fields the UI ignores: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode) and each transect's `threat_ratio`.
+The response also carries fields the UI ignores: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode; the footer says so if it isn't) and each transect's `threat_ratio`.
 
-Errors: 400 for invalid geometry, 503 when the DEM is missing, 500 otherwise, all with a string `detail`. When a module can't produce a verdict, eil-calc returns **422** with an object `detail` of `{ "error": "assessment_incomplete", "module", "reason" }` rather than a partial 200.
+Thresholds and limits are read from the response when present. `src/constants/status.js` keeps hand-copied fallbacks for older backends, plus the status strings. When eil-calc's `eil_status.py` or `slope_stability.py` changes, update that file to match. A backend without the coverage fields still works; the coverage card says the shares aren't reported.
 
-Status strings and thresholds are copied by hand into `src/constants/status.js`. When eil-calc's `eil_status.py` or `slope_stability.py` changes, update that file to match.
+When eil-calc finds no higher ground near the lot it returns SAFE with a zero drop and a one-point path. The runout view shows that as "No path from higher ground" instead of `H 0 m > 3 × ΔE 0 m`. It reads `no_source_found` when the backend sends it, and otherwise recognises the case by `delta_e == 0` with a single path point. The wording says "no higher ground within `search_radius_m`"; it doesn't treat the radius as a limit on H, which is measured along the descent path and can be longer.
+
+Errors: 400 for invalid geometry, 503 when the DEM is missing, 500 otherwise, all with a string `detail`. When a module can't produce a verdict, eil-calc returns **422** with an object `detail` of `{ "error": "assessment_incomplete", "module", "reason" }` rather than a partial 200. Each kind gets its own error screen (`src/components/ErrorScreen.jsx`), and every one says the parcel is not certified. Only text that's safe for assessors is shown as eil-calc's reason: the 400 geometry message, FastAPI's validation messages, and the fixed 422 reasons from `slope_stability` and `depositional_hazard`. The 503 and 500 strings can contain server file paths or internal state, and the `orchestrator` 422 echoes internal status strings, so those get fixed wording and the raw body goes to the browser console. A response the dashboard can't draw lands on the same screen through `ResultBoundary`.
+
+The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_status` says certified while a check failed, the verdict shows NOT CERTIFIED and says the two disagree.
+
+## Fixtures
+
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at b58782c. Each file is `{ request, status_code, response }`:
+
+| File | Outcome |
+|---|---|
+| `certified_safe.json` | CERTIFIED SAFE, one measured path |
+| `certified_safe_no_source.json` | CERTIFIED SAFE, no higher ground (`no_source_found`) |
+| `manual_review_flag.json` | MANUAL REVIEW REQUIRED, 77.6% in the 14–16° band |
+| `not_certified_susceptible.json` | NOT CERTIFIED on slope, runout SAFE |
+| `not_certified_prone.json` | NOT CERTIFIED on runout, worst path PRONE and the second SAFE |
+| `assessment_incomplete_422.json` | 422 from `slope_stability` |
+
+The 200s are full runs on about 31 m parcels over eil-calc's IfSAR test tile. Nothing imports them; they're for checking the UI by hand (the dev server serves them at `/fixtures/responses/<name>.json`). eil-calc regenerates its copies with `generate_response_fixtures.py`; copy them again when the contract changes.
 
 ## What you see on screen (plain-language guide for reviewers)
 
-This section is for hazard assessors reviewing the interface: what each element means and where it comes from, so you can judge whether it communicates the assessment clearly. No coding needed. The screen is one dashboard (`src/components/EILViz.jsx` and the components beside it) fed by the eil-calc result, beside a sidebar where you paste the parcel.
+This section is for hazard assessors reviewing the interface: what each element means and where it comes from, so you can judge whether it communicates the assessment clearly. No coding needed.
 
-### Top bar
+### New assessment
 
-- The project name and a data-source chip (`IFSAR 5m`, `SRTM 30m` or `LOCAL DEM`) telling you which elevation map produced the result.
-- The overall status badge (top-right) shows the parcel's worst-case verdict, whichever path you're viewing below: green for **CERTIFIED SAFE**, amber for **MANUAL REVIEW REQUIRED**, red for **NOT CERTIFIED**. An unrecognised status also shows red.
-- A breadcrumb shows **Phase 1** (the slope and runout checks running today) and that **Phase 2** (the machine-learning model) is deferred.
+Paste the parcel boundary and click **Run assessment**. The line under the box confirms a polygon was found and how many corners it has, or says what's wrong with the GeoJSON. The panel on the right explains the PHAST route and what gets checked.
 
-### Tab 1: Slope Stability Heatmap
+### Running
+
+Shows the time elapsed and that the app gives up after 5 minutes. **Cancel** goes back to the boundary, which is kept.
+
+### Result
+
+- The top bar names the elevation map that produced the result (`IfSAR DEM · 5 m`, `SRTM DEM · 30 m` or `Local DEM`).
+- The verdict band shows the overall result. CERTIFIED SAFE has a green outline and a tick, MANUAL REVIEW REQUIRED a dashed amber outline and a warning sign, NOT CERTIFIED a solid red block and a stop sign. Next to it, one line says which checks failed.
+- The two check cards below give each check's status and the numbers that decided it, for example "4.8% of the lot is steeper than 16°. The limit is 1.5%." Clicking a card shows that check underneath.
+
+#### Slope stability
 
 Answers "is the ground inside the lot too steep?"
 
-- The coloured grid is the lot, one square per elevation pixel. Blue-green is gentle (below 14°), amber is the review band (14–16°), red is susceptible (above 16°). Hovering shows the exact slope at that square, and the steepest square has a white outline.
-- The legend bar and the colour key under it show the same bands.
-- The right-hand cards show max slope, average slope and the threshold band.
-- The Assessment Logic card states the rule eil-calc applies. The lot is **SUSCEPTIBLE** if more than 1.5% of it is steeper than 16°, otherwise **FLAG FOR REVIEW** if more than 10% is between 14° and 16°, otherwise **SAFE**. A few isolated steep pixels don't condemn an otherwise flat lot, which is why max slope alone doesn't decide.
+- The coloured grid is the lot, one square per elevation pixel. Blue-green is gentle (14° or less), amber is the review band (over 14° up to 16°), red is susceptible (over 16°, darkening to 25°). Each band starts with a jump in lightness, so they can be told apart without relying on colour. Hovering shows the exact slope of a square, and the steepest square has a white outline.
+- **What decides the verdict** shows the share of the lot steeper than 16° and the share between 14° and 16°, each as a bar with a white mark at its limit (1.5% and 10%). The lot is **SUSCEPTIBLE** if more than 1.5% is steeper than 16°, otherwise **FLAG FOR REVIEW** if more than 10% is between 14° and 16°, otherwise **SAFE**. A few isolated steep pixels don't condemn an otherwise flat lot, which is why the steepest pixel alone doesn't decide.
+- Below that: the steepest pixel and the average slope.
 
-### Tab 2: Depositional Elevation Profile
+#### Depositional runout
 
 Answers "could a landslide from higher ground reach the lot?"
 
-- The green area chart is a side view of the steepest path from a nearby peak (red dot, left) down to the lot (blue dot). The X-axis is horizontal distance from the peak; the Y-axis is elevation.
-- The red dashed line labelled `3×ΔE limit` marks the runout rule: debris is assumed to travel up to three times its fall height. If the lot (blue dot) sits beyond the dashed line it is **SAFE (Beyond Runout)**; if it falls short of it, **PRONE (Within Runout Zone)**.
-- When there's more than one threatening path, a dropdown switches between up to three "critical paths" (path 1 is the worst). The small box restates the comparison in numbers, for example `620m > 510m`.
-- The right-hand cards list peak elevation, site elevation, **ΔE** (the drop), **H** (horizontal travel) and the **3×ΔE limit**.
+- The chart is a side view of the steepest path from a nearby peak (white triangle, left) down to the lot (blue square). The horizontal axis is distance from the peak; the vertical axis is elevation. Hovering gives the distance and elevation under the pointer.
+- The shaded red zone, ending at the dashed line, is how far debris is assumed to travel: three times the drop (3 × ΔE). If the lot sits beyond the dashed line the path is **SAFE (beyond runout)**; inside it, **PRONE (within runout zone)**. The blue bracket under the axis is H, the distance from the peak to the lot.
+- Up to three paths are shown as buttons, worst first. Any PRONE path fails the check.
+- The box on the right restates the comparison, for example `H 400 m ≤ 3 × ΔE 510 m`, and the list below gives peak and lot elevation, the drop, H and the debris reach.
+
+### Could not complete
+
+Shown instead of a result whenever no verdict was produced. It names the kind of failure, which check stopped (for a 422), eil-calc's reason, and what to do next.
 
 ### How to give feedback
 
-Name the tab and element (for example "Slope tab → Assessment Logic card") so the change can be found in `src/components/` (the slope tab is `SlopeTab.jsx`, the runout tab `RunoutTab.jsx`).
+Name the screen and element (for example "Result → slope → What decides the verdict") so the change can be found in `src/components/` (the slope view is `SlopeView.jsx`, the runout view `RunoutView.jsx`).
 
 ## Project structure
 
@@ -163,27 +202,32 @@ eil-viz/
 │   └── vendor-fonts.sh         # Regenerates public/fonts/ from Google Fonts
 ├── src/
 │   ├── components/             # Each .jsx imports the .css file of the same name
-│   │   ├── EILViz.jsx          # Dashboard shell: header, tab bar, active tab; holds tab and path state
-│   │   ├── EILViz.css          # Shell, panels, tooltip and colour-key styles shared by both tabs
-│   │   ├── Header.jsx          # Project ID, data-source chip, overall badge, phase breadcrumb
-│   │   ├── StatusBadge.jsx     # Status pill: exact-match status → colour, anything else → danger
-│   │   ├── SlopeTab.jsx        # Slope tab: heatmap panel, metric cards, assessment logic
-│   │   ├── SlopeHeatmap.jsx    # Canvas heatmap of _viz_grid with hover tooltip
-│   │   ├── SlopeLegend.jsx     # Gradient bar with threshold ticks
-│   │   ├── RunoutTab.jsx       # Runout tab: path picker, chart, metric cards, H vs 3×ΔE box
-│   │   ├── TransectChart.jsx   # Recharts elevation profile for one path
-│   │   └── MetricCard.jsx      # Labelled number card
+│   │   ├── EntryScreen.jsx     # GeoJSON box with live check, PHAST note
+│   │   ├── LoadingScreen.jsx   # Elapsed time, timeout, Cancel
+│   │   ├── ErrorScreen.jsx     # One screen per failure kind; always "not certified"
+│   │   ├── ResultScreen.jsx    # Verdict band, check cards, active check, print handling
+│   │   ├── ResultBoundary.jsx  # Error boundary: a result that can't be drawn fails closed
+│   │   ├── AppHeader.jsx       # Logo, parcel ID, DEM chip, New assessment
+│   │   ├── VerdictStamp.jsx    # Overall verdict: outlined, dashed or solid
+│   │   ├── StatusBadge.jsx     # Check-level status: icon + tone
+│   │   ├── SlopeView.jsx       # Heatmap card, legend, coverage bars, figures
+│   │   ├── SlopeHeatmap.jsx    # Canvas heatmap of _viz_grid with hover readout
+│   │   ├── CoverageBar.jsx     # One coverage share against its limit
+│   │   ├── RunoutView.jsx      # Path buttons, profile, path verdict and figures
+│   │   ├── TransectProfile.jsx # SVG elevation profile for one path
+│   │   └── Icons.jsx           # Inline SVG icons
 │   ├── constants/
-│   │   └── status.js           # Thresholds and status strings mirrored from eil-calc
+│   │   └── status.js           # Status strings, fallback thresholds, labels
 │   ├── lib/
-│   │   ├── tokens.js           # Reads --color-* tokens for canvas and Recharts, which take plain colour strings
-│   │   └── slopeColor.js       # Slope → colour, interpolated between the --color-slope-* tokens
-│   ├── data/
-│   │   └── sample_payload.json # Old captured response; not imported anywhere
-│   ├── App.jsx                 # Sidebar, GeoJSON parsing, ?geo= handling, fetch
-│   ├── App.css                 # Sidebar and layout styles
-│   ├── index.css               # Design tokens (--color-*) for every dashboard colour, and global resets
+│   │   ├── api.js              # POST /api/v1/assess, timeout, error classification
+│   │   ├── assessment.js       # Status → tone, displayed verdict, thresholds from the response
+│   │   ├── geojson.js          # Pulls the Polygon out of pasted GeoJSON
+│   │   ├── slopeColor.js       # Slope → colour, between the --color-slope-* tokens
+│   │   └── tokens.js           # Reads --color-* tokens for canvas, which takes plain colour strings
+│   ├── App.jsx                 # Screen state, ?geo= handling, cancel
+│   ├── index.css               # Design tokens (--color-*), fonts, shared button/card styles, print tokens
 │   └── main.jsx                # React mount point
+├── fixtures/responses/      # Real eil-calc responses for manual checks (see Fixtures)
 ├── Dockerfile                  # node:22 build → nginx:alpine serve
 ├── nginx.conf.template         # SPA fallback + /api/ reverse proxy
 ├── vite.config.js              # React plugin + dev /api proxy
@@ -195,11 +239,10 @@ eil-viz/
 
 ## Known limitations
 
-- The runout legend mentions a shaded zone, but only the dashed 3×ΔE line is drawn.
-- There's no error boundary. An empty or malformed `_viz_grid` throws in `SlopeHeatmap` (it reads `grid[0].length`) and the whole dashboard goes blank.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
-- Before the first result the sidebar is 408 px wide; it narrows to 360 px once the dashboard mounts. The `box-sizing: border-box` reset in `index.css` only applies while `.app` exists, as the old in-component `<style>` block did. Making it global would remove the jump but change the empty state.
-- `App.css` (sidebar, error box) still has a few literal oklch/rgba colours. Only the dashboard moved onto tokens.
-- `src/data/sample_payload.json` isn't imported anywhere and predates the coverage-fraction rule (`threshold_used: "max_slope"`).
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
-- The build is one 564 kB JS bundle (171 kB gzipped), mostly Recharts, and Vite warns about it on every build.
+- The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's labels get small there.
+- Dark theme only on screen. The light colours exist only in the print stylesheet.
+- No map: the heatmap is an abstract grid, because the app has no offline tiles and eil-calc returns no coordinates for the grid.
+- Cancel stops the browser waiting, but eil-calc runs the request to completion anyway (`assess_parcel` is a sync handler, so a client disconnect doesn't stop it).
+- `_viz_grid` is eil-calc's whole 500 m slope window, about 207 × 207 cells (roughly 250 KB) for a 31 m parcel's 49 values. The heatmap crops to the parcel, but the payload isn't trimmed.

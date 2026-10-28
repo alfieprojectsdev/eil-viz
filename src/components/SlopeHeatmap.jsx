@@ -1,149 +1,128 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { makeSlopeColor } from "../lib/slopeColor";
 import { readTokens } from "../lib/tokens";
 import "./SlopeHeatmap.css";
 
-export default function SlopeHeatmap({ data }) {
+const MAX_HEIGHT = 560;
+const MAX_CELL = 48;
+// Drawing width while the well is hidden (the inactive tab). CSS scales the
+// canvas down to whatever space it gets, e.g. on a printed page.
+const FALLBACK_WIDTH = 720;
+
+// Rows and columns that hold parcel pixels, the steepest pixel, and the count.
+function summarise(grid) {
+  let minR = Infinity, maxR = -1, minC = Infinity, maxC = -1;
+  let max = null, count = 0;
+  grid.forEach((row, r) => {
+    row.forEach((v, c) => {
+      if (typeof v !== "number") return;
+      count++;
+      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+      minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+      if (!max || v > max.v) max = { v, r, c };
+    });
+  });
+  return count ? { minR, maxR, minC, maxC, max, count } : null;
+}
+
+function band(deg, rules) {
+  if (deg <= rules.flagDeg) return "safe";
+  if (deg <= rules.susceptibleDeg) return "review band";
+  return "susceptible";
+}
+
+export default function SlopeHeatmap({ grid, rules }) {
+  const wellRef = useRef(null);
   const canvasRef = useRef(null);
+  const [width, setWidth] = useState(0);
   const [hovered, setHovered] = useState(null);
 
-  const grid = data._viz_grid;
-  const rows = grid.length;
-  const cols = grid[0].length;
+  const valid = Array.isArray(grid) && grid.every(Array.isArray);
+  const info = useMemo(() => (valid ? summarise(grid) : null), [grid, valid]);
 
-  const draw = useCallback(() => {
+  useEffect(() => {
+    const el = wellRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rows = info ? info.maxR - info.minR + 1 : 0;
+  const cols = info ? info.maxC - info.minC + 1 : 0;
+  const cell = info ? Math.min((width || FALLBACK_WIDTH) / cols, MAX_HEIGHT / rows, MAX_CELL) : 0;
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !info || !cell) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cols * cell * dpr);
+    canvas.height = Math.round(rows * cell * dpr);
     const ctx = canvas.getContext("2d");
-    const cw = canvas.width;
-    const ch = canvas.height;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cols * cell, rows * cell);
 
-    let minR = rows, maxR = 0, minC = cols, maxC = 0;
-    let hasData = false;
-    grid.forEach((row, r) => {
-      row.forEach((val, c) => {
-        if (val !== null) {
-          hasData = true;
-          if (r < minR) minR = r;
-          if (r > maxR) maxR = r;
-          if (c < minC) minC = c;
-          if (c > maxC) maxC = c;
-        }
-      });
-    });
-
-    if (!hasData) {
-      ctx.clearRect(0, 0, cw, ch);
-      return;
-    }
-
-    minR = Math.max(0, minR - 1);
-    maxR = Math.min(rows - 1, maxR + 1);
-    minC = Math.max(0, minC - 1);
-    maxC = Math.min(cols - 1, maxC + 1);
-
-    const activeRows = maxR - minR + 1;
-    const activeCols = maxC - minC + 1;
-    const cellW = cw / activeCols;
-    const cellH = ch / activeRows;
-
-    ctx.clearRect(0, 0, cw, ch);
-
-    const slopeColor = makeSlopeColor();
-    const color = readTokens(["--color-heatmap-frame", "--color-heatmap-grid", "--color-heatmap-max", "--color-heatmap-label"]);
-
-    for (let r = minR; r <= maxR; r++) {
-      for (let c = minC; c <= maxC; c++) {
-        const val = grid[r][c];
-        if (val !== null) {
-          ctx.fillStyle = slopeColor(val);
-          ctx.fillRect((c - minC) * cellW, (r - minR) * cellH, cellW + 1, cellH + 1);
-        }
-      }
-    }
-
-    ctx.strokeStyle = color["--color-heatmap-frame"];
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, cw - 2, ch - 2);
-
-    ctx.strokeStyle = color["--color-heatmap-grid"];
-    ctx.lineWidth = 0.5;
-    for (let r = 1; r < activeRows; r++) {
-      ctx.beginPath(); ctx.moveTo(0, r * cellH); ctx.lineTo(cw, r * cellH); ctx.stroke();
-    }
-    for (let c = 1; c < activeCols; c++) {
-      ctx.beginPath(); ctx.moveTo(c * cellW, 0); ctx.lineTo(c * cellW, ch); ctx.stroke();
-    }
-
-    let maxVal = -Infinity, maxValR = 0, maxValC = 0;
-    for (let r = minR; r <= maxR; r++) {
-      for (let c = minC; c <= maxC; c++) {
+    const slopeColor = makeSlopeColor(rules);
+    // A 1px gap reads as a pixel grid; below 6px cells it would swamp them.
+    const gap = cell >= 6 ? 1 : 0;
+    for (let r = info.minR; r <= info.maxR; r++) {
+      for (let c = info.minC; c <= info.maxC; c++) {
         const v = grid[r][c];
-        if (v !== null && v > maxVal) { maxVal = v; maxValR = r; maxValC = c; }
+        if (typeof v !== "number") continue;
+        ctx.fillStyle = slopeColor(v);
+        ctx.fillRect((c - info.minC) * cell, (r - info.minR) * cell, cell - gap, cell - gap);
       }
     }
-    if (maxVal !== -Infinity) {
-      ctx.strokeStyle = color["--color-heatmap-max"];
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect((maxValC - minC) * cellW + 1, (maxValR - minR) * cellH + 1, cellW - 2, cellH - 2);
-    }
 
-    ctx.fillStyle = color["--color-heatmap-label"];
-    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-    ctx.fillText("N↑", 8, 16);
+    const { max } = info;
+    const lw = Math.max(1.5, Math.min(2.5, cell / 6));
+    ctx.strokeStyle = readTokens(["--color-heatmap-max"])["--color-heatmap-max"];
+    ctx.lineWidth = lw;
+    ctx.strokeRect(
+      (max.c - info.minC) * cell + lw / 2, (max.r - info.minR) * cell + lw / 2,
+      cell - gap - lw, cell - gap - lw,
+    );
+  }, [grid, info, rules, rows, cols, cell]);
 
-    canvasRef.current._geoMap = { minR, minC, cellW, cellH, maxR, maxC };
-  }, [grid, rows, cols]);
+  if (!info) {
+    return (
+      <div className="heatmap-well heatmap-empty" ref={wellRef}>
+        <p className="text-low">The response has no slope pixels to draw.</p>
+      </div>
+    );
+  }
 
-  useEffect(() => { draw(); }, [draw]);
-
-  const handleMouseMove = (e) => {
-    const canvas = canvasRef.current;
-    const map = canvas?._geoMap;
-    if (!map) return;
-    const rect = canvas.getBoundingClientRect();
+  const handleMove = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const logicalX = x * scaleX;
-    const logicalY = y * scaleY;
-
-    const cOffset = Math.floor(logicalX / map.cellW);
-    const rOffset = Math.floor(logicalY / map.cellH);
-    const c = map.minC + cOffset;
-    const r = map.minR + rOffset;
-
-    if (r >= map.minR && r <= map.maxR && c >= map.minC && c <= map.maxC && r >= 0 && r < rows && c >= 0 && c < cols) {
-      const val = grid[r][c];
-      if (val !== null) {
-        setHovered({ r, c, val, x, y });
-      } else {
-        setHovered(null);
-      }
-    } else {
-      setHovered(null);
-    }
+    // Drawn cell size times however much CSS has scaled the canvas.
+    const shown = cell * (rect.width / (cols * cell));
+    const r = info.minR + Math.floor(y / shown);
+    const c = info.minC + Math.floor(x / shown);
+    const v = grid[r]?.[c];
+    setHovered(typeof v === "number" ? { v, x, y } : null);
   };
 
   return (
-    <div className="heatmap-wrap">
-      <canvas
-        ref={canvasRef}
-        width={380}
-        height={380}
-        className="heatmap-canvas"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHovered(null)}
-      />
-      {hovered && (
-        <div className="map-tooltip" style={{ left: hovered.x + 12, top: hovered.y - 36 }}>
-          <span className="tt-label">Slope</span>
-          <span className="tt-val">{hovered.val.toFixed(1)}°</span>
-          <span className="tt-sub">pixel [{hovered.r},{hovered.c}]</span>
-        </div>
-      )}
+    <div className="heatmap-well" ref={wellRef}>
+      <div className="heatmap-stage" style={{ width: cols * cell }}>
+        <canvas
+          ref={canvasRef}
+          className="heatmap-canvas"
+          role="img"
+          aria-label={`Slope heatmap of the lot: ${info.count} pixels, the steepest ${info.max.v.toFixed(1)}° (outlined).`}
+          onMouseMove={handleMove}
+          onMouseLeave={() => setHovered(null)}
+        />
+        {hovered && (
+          <div className="heatmap-tooltip" style={{ left: hovered.x + 14, top: hovered.y - 40 }}>
+            <span className="mono text-high">{hovered.v.toFixed(1)}°</span>
+            <span className="text-low">{band(hovered.v, rules)}</span>
+          </div>
+        )}
+      </div>
+      <span className="heatmap-north mono" aria-hidden="true">N ↑</span>
     </div>
   );
 }
