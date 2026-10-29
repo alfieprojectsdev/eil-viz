@@ -13,7 +13,7 @@ import ResultBoundary from './components/ResultBoundary'
 // fragment; ?geo= is still read for PHAST builds that predate it.
 const GEO_AT_LOAD = (() => {
   const geoParam = new URLSearchParams(window.location.hash.slice(1)).get('geo')
-    ?? new URLSearchParams(window.location.search).get('geo')
+    || new URLSearchParams(window.location.search).get('geo')
   if (!geoParam) return null
   try {
     // Older PHAST builds don't URL-encode the base64, so URLSearchParams
