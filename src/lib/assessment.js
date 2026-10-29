@@ -89,6 +89,13 @@ export function noRunoutSource(dep, transects) {
     && (transects[0]?.path?.length ?? 0) <= 1;
 }
 
+// True when the runout check passed on a measured path, the case that needs
+// the assessor to confirm H with a straight line (see RunoutCaution). The
+// no-source pass doesn't: it rests on the search radius, not on H.
+export function runoutSafeNeedsCheck(dep) {
+  return toneOf(dep?.assessment?.status) === "safe" && !noRunoutSource(dep, transectsOf(dep));
+}
+
 // The verdict to display. Follows overall_status, except that CERTIFIED SAFE
 // is only shown when both checks also say SAFE, and MANUAL REVIEW only when
 // neither check failed: the UI must never show a

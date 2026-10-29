@@ -1,5 +1,6 @@
 import { transectsOf, noRunoutSource, searchRadius, formatMetres } from "../lib/assessment";
 import TransectProfile from "./TransectProfile";
+import RunoutCaution from "./RunoutCaution";
 import "./RunoutView.css";
 
 function Explainer() {
@@ -8,7 +9,7 @@ function Explainer() {
       <summary>How the runout check works</summary>
       <div className="explainer-body">
         <p>eil-calc walks uphill from the lot to nearby peaks, then follows the steepest way back down. For each path, debris is assumed to travel up to three times the drop (ΔE) horizontally.</p>
-        <p>A path is SAFE if the lot is farther than that from the peak (H &gt; 3 × ΔE), otherwise PRONE. Up to three of the most threatening paths are shown; any PRONE path fails the check.</p>
+        <p>A path is SAFE if the lot is farther than that from the peak (H &gt; 3 × ΔE), otherwise PRONE. eil-calc measures H along the path it walked, not in a straight line. Up to three of the most threatening paths are shown; any PRONE path fails the check.</p>
       </div>
     </details>
   );
@@ -42,7 +43,7 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
     ["Peak elevation", formatMetres(m.elevation_peak)],
     ["Lot elevation", formatMetres(m.elevation_site)],
     ["Drop, ΔE", formatMetres(m.delta_e)],
-    ["Distance, H", formatMetres(m.horizontal_distance_h)],
+    ["Distance along path, H", formatMetres(m.horizontal_distance_h)],
     ["Debris reach, 3 × ΔE", formatMetres(m.required_runout_3x)],
   ];
 
@@ -91,11 +92,17 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
         <section className={`path-verdict ${compliant ? "path-verdict-safe" : "path-verdict-prone"}`} aria-label="Path verdict">
           <span className="eyebrow path-verdict-title">Path {index + 1}</span>
           <span className="path-verdict-status">{compliant ? "SAFE (beyond runout)" : "PRONE (within runout zone)"}</span>
-          <span className="text-high">{compliant ? "Debris from this peak stops before the lot." : "Debris from this peak could reach the lot."}</span>
+          <span className="text-high">{compliant ? "Along eil-calc's path, debris from this peak stops before the lot." : "Debris from this peak could reach the lot."}</span>
           <span className="mono path-verdict-formula">
             H {formatMetres(m.horizontal_distance_h)} {compliant ? ">" : "≤"} 3 × ΔE {formatMetres(m.required_runout_3x)}
           </span>
         </section>
+
+        {compliant && (
+          <RunoutCaution title="Check this distance">
+            In Google Earth, measure the straight horizontal line from the source (roughly where the slope changes most, below this path's high point at elevation {formatMetres(m.elevation_peak)}) to the edge of the lot. The path is only SAFE if that line is more than 3 × the drop along it. eil-calc's 3 × ΔE for this path is {formatMetres(m.required_runout_3x)}, measured from the high point.
+          </RunoutCaution>
+        )}
 
         <section className="card path-figures" aria-label="Path figures">
           <dl>
