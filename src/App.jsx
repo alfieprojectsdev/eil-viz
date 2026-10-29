@@ -7,13 +7,19 @@ import ErrorScreen from './components/ErrorScreen'
 import ResultScreen from './components/ResultScreen'
 import ResultBoundary from './components/ResultBoundary'
 
-// GeoJSON from the ?geo= URL param (base64-encoded FeatureCollection from
-// PHAST), read once when the module loads. null when absent or undecodable.
+// GeoJSON handed over by PHAST as a base64-encoded FeatureCollection, read
+// once when the module loads. null when absent or undecodable. #geo= keeps
+// the parcel out of server and proxy logs, since browsers never send the
+// fragment; ?geo= is still read for PHAST builds that predate it.
 const GEO_AT_LOAD = (() => {
-  const geoParam = new URLSearchParams(window.location.search).get('geo')
+  const geoParam = new URLSearchParams(window.location.hash.slice(1)).get('geo')
+    ?? new URLSearchParams(window.location.search).get('geo')
   if (!geoParam) return null
   try {
-    const bytes = Uint8Array.from(atob(geoParam), char => char.charCodeAt(0))
+    // Older PHAST builds don't URL-encode the base64, so URLSearchParams
+    // reads its '+' as a space. Base64 never contains a space, so turning
+    // them back is safe.
+    const bytes = Uint8Array.from(atob(geoParam.replaceAll(' ', '+')), char => char.charCodeAt(0))
     return new TextDecoder().decode(bytes)
   } catch {
     return null
@@ -66,6 +72,7 @@ function App() {
   useEffect(() => {
     if (GEO_AT_LOAD === null || autoRan.current) return
     autoRan.current = true
+    // Drops both #geo= and ?geo=.
     window.history.replaceState({}, '', window.location.pathname)
     // A request to an external system, which is what effects are for. State
     // only changes synchronously when the decoded GeoJSON fails to parse.

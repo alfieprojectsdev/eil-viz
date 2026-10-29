@@ -5,9 +5,10 @@ eil-calc is worked on in its own session. Don't edit it from here; report backen
 
 ## Layout
 
-- `src/App.jsx`: screen state (entry, loading, result, error), `?geo=` (base64, from the PHAST
-  extension), cancel. `src/lib/api.js` does the `POST /api/v1/assess`, the 5-minute timeout and
-  error classification; `src/lib/geojson.js` extracts the Polygon.
+- `src/App.jsx`: screen state (entry, loading, result, error), `#geo=` (base64, from the PHAST
+  extension; `?geo=` from older builds), cancel. `src/lib/api.js` does the
+  `POST /api/v1/assess`, the 5-minute timeout and error classification;
+  `src/lib/geojson.js` extracts the Polygon.
 - `src/components/`: one component per file, each importing the `.css` file of the same name.
   `ResultScreen` composes the verdict band, check cards, `SlopeView` and `RunoutView`;
   `ResultBoundary` sends a result that can't be drawn to `ErrorScreen`.
