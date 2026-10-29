@@ -26,7 +26,7 @@ function finite(v) {
 }
 
 // Thresholds and limits from the response, falling back to the mirrored
-// constants for backends older than eil-calc a85ec01.
+// constants for backends older than eil-calc 04c6a1d.
 export function slopeRules(slope) {
   const a = slope?.assessment ?? {};
   return {
@@ -81,7 +81,7 @@ export function searchRadius(dep) {
 // no higher ground near the lot. Showing "H 0 m > 3 × ΔE 0 m" for that would
 // be false, so the runout view treats it as its own case.
 export function noRunoutSource(dep, transects) {
-  // eil-calc 2333ef8+ flags it; older backends are recognised by shape.
+  // eil-calc 84daae6+ flags it; older backends are recognised by shape.
   if (typeof dep?.assessment?.no_source_found === "boolean") return dep.assessment.no_source_found;
   if (transects.length === 0) return true;
   return transects.length === 1
