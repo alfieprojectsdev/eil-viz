@@ -92,7 +92,7 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
         <section className={`path-verdict ${compliant ? "path-verdict-safe" : "path-verdict-prone"}`} aria-label="Path verdict">
           <span className="eyebrow path-verdict-title">Path {index + 1}</span>
           <span className="path-verdict-status">{compliant ? "SAFE (beyond runout)" : "PRONE (within runout zone)"}</span>
-          <span className="text-high">{compliant ? "Debris from this peak stops before the lot." : "Debris from this peak could reach the lot."}</span>
+          <span className="text-high">{compliant ? "Along eil-calc's path, debris from this peak stops before the lot." : "Debris from this peak could reach the lot."}</span>
           <span className="mono path-verdict-formula">
             H {formatMetres(m.horizontal_distance_h)} {compliant ? ">" : "≤"} 3 × ΔE {formatMetres(m.required_runout_3x)}
           </span>
