@@ -84,7 +84,7 @@ export default function ResultScreen({ result, onNewAssessment }) {
 
         {runoutSafeNeedsCheck(dep) && (
           <RunoutCaution title="The runout pass isn't confirmed">
-            eil-calc measures the distance H along its computed downhill path. The PHIVOLCS method measures a straight horizontal line from the peak to the edge of the lot, which can be much shorter. Before relying on this result, measure that line in Google Earth for each path and check that it's more than 3 × ΔE.
+            eil-calc measures the distance H along its computed downhill path. The PHIVOLCS method (OHAS slide 30) measures a straight horizontal line from the source, roughly where the slope changes most, to the edge of the lot, which can be much shorter. Before relying on this result, measure that line in Google Earth for each path and check that it's more than 3 × the drop along it.
           </RunoutCaution>
         )}
 

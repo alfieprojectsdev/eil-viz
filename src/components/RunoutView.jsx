@@ -100,7 +100,7 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
 
         {compliant && (
           <RunoutCaution title="Check this distance">
-            Measure the straight horizontal line from this peak (elevation {formatMetres(m.elevation_peak)}) to the edge of the lot in Google Earth. The path is only SAFE if that line is more than {formatMetres(m.required_runout_3x)}.
+            In Google Earth, measure the straight horizontal line from the source (roughly where the slope changes most, below this path's high point at elevation {formatMetres(m.elevation_peak)}) to the edge of the lot. The path is only SAFE if that line is more than 3 × the drop along it. eil-calc's 3 × ΔE for this path is {formatMetres(m.required_runout_3x)}, measured from the high point.
           </RunoutCaution>
         )}
 
