@@ -10,7 +10,7 @@ Built with [Vite 7](https://vitejs.dev/) and React 19. Charts are plain canvas a
 - Accepts a GeoJSON Feature, a FeatureCollection (the first Polygon feature is used, so a leading LineString is skipped) or a bare Polygon geometry. The entry screen checks the GeoJSON as you type and won't send anything it can't parse.
 - The verdict comes first, with one sentence per check giving the numbers that decided it. CERTIFIED SAFE, MANUAL REVIEW REQUIRED and NOT CERTIFIED differ in border style, fill and icon as well as colour, and anything unrecognised shows as NOT CERTIFIED.
 - Slope heatmap drawn on a canvas from `_viz_grid`, with the coverage shares (eil-calc `coverage_susceptible` / `coverage_flag`) drawn as bars against their limits. The colour scale jumps in lightness at 14° and 16°.
-- Elevation profile (SVG) for each path in `_viz_transects`, with the 3×ΔE debris reach shaded and the distance H marked.
+- Elevation profile (SVG) along each path in `_viz_transects`, with the straight jump that closes a stalled walk dashed. H is compared with the 3×ΔE debris reach in a pair of bars, or, for backends that measure H along the walk, as a shaded zone on the profile.
 - Cancel while running, and a 5-minute client-side limit to match nginx's proxy timeout.
 - Print report: printing lays out both checks on a light background.
 - Self-hosted IBM Plex Sans and IBM Plex Mono in `public/fonts/`, so the page renders on a LAN with no route to Google Fonts. The production build makes no runtime requests to any other origin.
@@ -123,10 +123,15 @@ phase_1_compliance
     _viz_transects[]           up to 3, worst first
       metrics                  elevation_peak, elevation_site, delta_e, horizontal_distance_h, required_runout_3x
       assessment               status, is_compliant
-      path[]                   { dist_m, elev_m }
+      path[]                   { dist_m, elev_m, lon, lat }; dist_m runs along the walk
+      closure_m                straight jump closing a stalled walk, or null (eil-calc 328408b+)
+      path_length_m            walked length; its presence means H is straight to the lot edge (eil-calc 7203893+)
+      straight_line_m          straight line from the peak to the lot's lowest point (eil-calc 328408b+)
 ```
 
-The response also carries fields the UI ignores: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode; the footer says so if it isn't) and each transect's `threat_ratio`.
+The response also carries fields the UI ignores for now: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode; the footer says so if it isn't), each transect's `threat_ratio`, and the plan-view fields from eil-calc 328408b (`_viz_parcel`, `_viz_contours`, `_viz_site`, `_viz_grid_bounds`, each transect's `peak`, `edge_point` and slopes).
+
+How H is measured depends on the backend. From eil-calc 7203893 it's the straight line from the peak to the nearest point on the lot's outline, and the transect carries `path_length_m`. Before that it ran along the walk. eil-viz checks for the `path_length_m` key (`straightLineH` in `src/lib/assessment.js`). With a straight-line H, the side profile shows the walk without the H bracket or debris-reach zone, which belong to a different axis, and a pair of bars compares H with 3 × ΔE. With a path-length H, SAFE results carry the caution described under Known limitations.
 
 Thresholds and limits are read from the response when present. `src/constants/status.js` keeps hand-copied fallbacks for older backends, plus the status strings. When eil-calc's `eil_status.py` or `slope_stability.py` changes, update that file to match. A backend without the coverage fields still works; the coverage card says the shares aren't reported.
 
@@ -138,18 +143,18 @@ The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_
 
 ## Fixtures
 
-`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at a1c4cde. Each file is `{ request, status_code, response }`:
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at 7203893. Each file is `{ request, status_code, response }`:
 
 | File | Outcome |
 |---|---|
 | `certified_safe.json` | CERTIFIED SAFE, one measured path |
 | `certified_safe_no_source.json` | CERTIFIED SAFE, no higher ground (`no_source_found`) |
-| `manual_review_flag.json` | MANUAL REVIEW REQUIRED, 77.6% in the 14–16° band |
-| `not_certified_susceptible.json` | NOT CERTIFIED on slope, runout SAFE |
-| `not_certified_prone.json` | NOT CERTIFIED on runout, worst path PRONE and the second SAFE |
+| `manual_review_flag.json` | MANUAL REVIEW REQUIRED, 38.8% in the 14–16° band |
+| `not_certified_susceptible.json` | NOT CERTIFIED on slope and runout |
+| `not_certified_prone.json` | NOT CERTIFIED on runout, both paths PRONE |
 | `assessment_incomplete_422.json` | 422 from `slope_stability` |
 
-The 200s are full runs on about 31 m parcels over eil-calc's IfSAR test tile. Nothing imports them; they're for checking the UI by hand (the dev server serves them at `/fixtures/responses/<name>.json`). eil-calc regenerates its copies with `generate_response_fixtures.py`; copy them again when the contract changes.
+The 200s are full runs on about 31 m parcels over eil-calc's IfSAR test tile. H is straight to the lot edge in all of them. The two runout-SAFE parcels sit in a strip near the tile's east edge, where the 1 km search is cut off; they exercise the UI but aren't evidence that such lots are safe. Nothing imports them; they're for checking the UI by hand (the dev server serves them at `/fixtures/responses/<name>.json`). eil-calc regenerates its copies with `generate_response_fixtures.py`; copy them again when the contract changes.
 
 ## What you see on screen (plain-language guide for reviewers)
 
@@ -181,10 +186,11 @@ Answers "is the ground inside the lot too steep?"
 
 Answers "could a landslide from higher ground reach the lot?"
 
-- The chart is a side view of the steepest path from a nearby peak (white triangle, left) down to the lot (blue square). The horizontal axis is distance from the peak; the vertical axis is elevation. Hovering gives the distance and elevation under the pointer.
-- The shaded red zone, ending at the dashed line, is how far debris is assumed to travel: three times the drop (3 × ΔE). If the lot sits beyond the dashed line the path is **SAFE (beyond runout)**; inside it, **PRONE (within runout zone)**. The blue bracket under the axis is H, the distance from the peak to the lot.
+- The chart is a side view of the steepest path from a nearby peak (white triangle, left) down to where it ends in the lot (blue square). The horizontal axis is distance walked along the path; the vertical axis is elevation. Hovering gives the distance and elevation under the pointer. A dashed last segment is a straight jump eil-calc added where the walk stalled on flat ground.
+- H is the straight horizontal line from the peak to the nearest edge of the lot. Two bars under the chart compare it with how far debris is assumed to travel, three times the drop (3 × ΔE). If H is longer the path is **SAFE (beyond runout)**; otherwise **PRONE (within runout zone)**. The figures list also gives the straight line to the lot's lowest point and the walked length, so H can be compared with what an assessor measures.
+- With an older eil-calc that measures H along the walk, the chart instead shades the debris reach in red up to a dashed line, marks H with a bracket under the axis, and SAFE results carry a caution to measure the straight line in Google Earth.
 - Up to three paths are shown as buttons, worst first. Any PRONE path fails the check.
-- The box on the right restates the comparison, for example `H 400 m ≤ 3 × ΔE 510 m`, and the list below gives peak and lot elevation, the drop, H and the debris reach.
+- The box on the right restates the comparison, for example `H 400 m ≤ 3 × ΔE 510 m`, and the list below gives peak and lot elevation, the drop, H, the debris reach and the other two distances.
 
 ### Could not complete
 
@@ -215,7 +221,7 @@ eil-viz/
 │   │   ├── SlopeView.jsx       # Heatmap card, legend, coverage bars, figures
 │   │   ├── SlopeHeatmap.jsx    # Canvas heatmap of _viz_grid with hover readout
 │   │   ├── CoverageBar.jsx     # One coverage share against its limit
-│   │   ├── RunoutCaution.jsx   # Interim note: confirm H with a straight line to the lot edge
+│   │   ├── RunoutCaution.jsx   # Note on path-length H: confirm with a straight line to the lot edge
 │   │   ├── RunoutView.jsx      # Path buttons, profile, path verdict and figures
 │   │   ├── TransectProfile.jsx # SVG elevation profile for one path
 │   │   └── Icons.jsx           # Inline SVG icons
@@ -242,7 +248,8 @@ eil-viz/
 
 ## Known limitations
 
-- The runout check's distance H is measured by eil-calc along its computed downhill path. The PHIVOLCS method (OHAS slide 30) measures a straight horizontal line from the source, roughly where the slope changes most, to the edge of the lot, which can be much shorter; on eil-calc's test fixtures every path that passed fails under the straight line. Until eil-calc's rule is settled, every runout SAFE result and SAFE path carries a caution telling the assessor to measure that line in Google Earth (`RunoutCaution`). The no-source pass doesn't, because it rests on the search radius rather than H.
+- Backends before eil-calc 7203893 measure the runout distance H along the computed downhill path. The PHIVOLCS method (OHAS slide 30) measures a straight horizontal line from the source, roughly where the slope changes most, to the edge of the lot, which can be much shorter. For those backends every runout SAFE result and SAFE path carries a caution telling the assessor to measure that line in Google Earth (`RunoutCaution`). The no-source pass doesn't, because it rests on the search radius rather than H.
+- From eil-calc 7203893, H is straight to the lot edge but starts at the peak eil-calc's walk found, not at the slope break slide 30 uses. Whether that start point is acceptable is still to be decided.
 - `?geo=` is still accepted for PHAST builds that predate `#geo=`. Drop it one PHAST release after the switch. Until then a `?geo=` parcel still reaches any proxy in front of nginx, and nginx's error log, which quotes the request line when a request fails.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.

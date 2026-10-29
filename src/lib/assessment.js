@@ -89,11 +89,22 @@ export function noRunoutSource(dep, transects) {
     && (transects[0]?.path?.length ?? 0) <= 1;
 }
 
-// True when the runout check passed on a measured path, the case that needs
-// the assessor to confirm H with a straight line (see RunoutCaution). The
-// no-source pass doesn't: it rests on the search radius, not on H.
+// eil-calc PR #10 onwards measures H as a straight line from the peak to the
+// nearest point on the lot's outline and reports the walked length as
+// path_length_m. Before it, H ran along the walk. The key's presence tells
+// them apart; its value is null on the no-source placeholder.
+export function straightLineH(dep) {
+  return transectsOf(dep).some(t => t && Object.hasOwn(t, "path_length_m"));
+}
+
+// True when the runout check passed on a path whose H was measured along the
+// walk, the case that needs the assessor to confirm H with a straight line
+// (see RunoutCaution). The no-source pass doesn't: it rests on the search
+// radius, not on H.
 export function runoutSafeNeedsCheck(dep) {
-  return toneOf(dep?.assessment?.status) === "safe" && !noRunoutSource(dep, transectsOf(dep));
+  return toneOf(dep?.assessment?.status) === "safe"
+    && !noRunoutSource(dep, transectsOf(dep))
+    && !straightLineH(dep);
 }
 
 // The verdict to display. Follows overall_status, except that CERTIFIED SAFE

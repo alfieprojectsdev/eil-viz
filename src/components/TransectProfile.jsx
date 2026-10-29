@@ -32,7 +32,12 @@ function ticks(lo, hi, count) {
   return out;
 }
 
-export default function TransectProfile({ transect, label }) {
+// The x axis is distance along the walked path (dist_m). Before eil-calc
+// PR #10 that was also how H was measured, so the lot, the H bracket and the
+// debris reach could sit on the same axis. With a straight-line H (`straight`)
+// they can't: the lot is drawn where the path ends, and the H comparison is
+// left to RunoutView.
+export default function TransectProfile({ transect, label, straight = false }) {
   const m = transect.metrics;
   const points = useMemo(() => cleanPath(transect.path ?? []), [transect]);
   const [hover, setHover] = useState(null);
@@ -40,7 +45,9 @@ export default function TransectProfile({ transect, label }) {
   const lastDist = points.length ? points[points.length - 1].dist : 0;
   // Wide enough for the path, the lot and the debris reach, whichever is
   // furthest, rounded up to a whole tick.
-  const span = Math.max(lastDist, m.horizontal_distance_h, m.required_runout_3x, 50) * 1.08;
+  const span = (straight
+    ? Math.max(lastDist, 50)
+    : Math.max(lastDist, m.horizontal_distance_h, m.required_runout_3x, 50)) * 1.08;
   const xStep = niceStep(span, 5);
   const xMax = Math.ceil(span / xStep) * xStep;
   const elevs = points.map(p => p.elev).concat(m.elevation_peak, m.elevation_site);
@@ -51,14 +58,20 @@ export default function TransectProfile({ transect, label }) {
   const X = (d) => PLOT.left + (d / xMax) * (PLOT.right - PLOT.left);
   const Y = (e) => PLOT.bottom - ((e - yLo) / (yHi - yLo)) * (PLOT.bottom - PLOT.top);
 
-  const line = points.map((p, i) => `${i ? "L" : "M"}${X(p.dist).toFixed(1)} ${Y(p.elev).toFixed(1)}`).join(" ");
+  const toPath = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${X(p.dist).toFixed(1)} ${Y(p.elev).toFixed(1)}`).join(" ");
+  const line = toPath(points);
+  // When the walk stalled, eil-calc closes the gap with a straight jump: the
+  // last segment, drawn dashed.
+  const jumped = typeof transect.closure_m === "number" && points.length >= 2;
+  const walked = jumped ? toPath(points.slice(0, -1)) : line;
+  const jump = jumped ? toPath(points.slice(-2)) : "";
   const area = points.length
     ? `${line} L${X(lastDist).toFixed(1)} ${PLOT.bottom} L${X(points[0].dist).toFixed(1)} ${PLOT.bottom} Z`
     : "";
 
   const limitX = X(m.required_runout_3x);
   const limitRight = limitX > 640;
-  const siteX = X(m.horizontal_distance_h);
+  const siteX = X(straight ? lastDist : m.horizontal_distance_h);
   const siteY = Y(m.elevation_site);
   const peakX = X(0);
   const peakY = Y(m.elevation_peak);
@@ -79,7 +92,7 @@ export default function TransectProfile({ transect, label }) {
     <div className="profile">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className="profile-svg"
         onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-        <rect className="profile-zone" x={PLOT.left} y={PLOT.top} width={Math.max(0, limitX - PLOT.left)} height={PLOT.bottom - PLOT.top} />
+        {!straight && <rect className="profile-zone" x={PLOT.left} y={PLOT.top} width={Math.max(0, limitX - PLOT.left)} height={PLOT.bottom - PLOT.top} />}
         {ticks(yLo, yHi, 4).map(v => (
           <g key={`y${v}`}>
             <line className="profile-grid" x1={PLOT.left} x2={PLOT.right} y1={Y(v)} y2={Y(v)} />
@@ -93,12 +106,17 @@ export default function TransectProfile({ transect, label }) {
         <line className="profile-axis" x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} />
 
         <path className="profile-area" d={area} />
-        <path className="profile-line" d={line} />
+        <path className="profile-line" d={walked} />
+        {jumped && <path className="profile-jump" d={jump} />}
 
-        <line className="profile-limit" x1={limitX} x2={limitX} y1={PLOT.top} y2={PLOT.bottom} />
-        <text className="profile-limit-label" x={limitX + (limitRight ? -8 : 8)} y={PLOT.top + 18} textAnchor={limitRight ? "end" : "start"}>
-          Debris reach {formatMetres(m.required_runout_3x)}
-        </text>
+        {!straight && (
+          <>
+            <line className="profile-limit" x1={limitX} x2={limitX} y1={PLOT.top} y2={PLOT.bottom} />
+            <text className="profile-limit-label" x={limitX + (limitRight ? -8 : 8)} y={PLOT.top + 18} textAnchor={limitRight ? "end" : "start"}>
+              Debris reach {formatMetres(m.required_runout_3x)}
+            </text>
+          </>
+        )}
 
         <polygon className="profile-peak" points={`${peakX},${peakY - 9} ${peakX + 8},${peakY + 5} ${peakX - 8},${peakY + 5}`} />
         <text className="profile-label" x={peakX + 14} y={peakY - 2}>Peak {formatMetres(m.elevation_peak)}</text>
@@ -110,7 +128,9 @@ export default function TransectProfile({ transect, label }) {
           <line x1={PLOT.left} x2={siteX} y1={358} y2={358} />
           <line x1={PLOT.left} x2={PLOT.left} y1={352} y2={364} />
           <line x1={siteX} x2={siteX} y1={352} y2={364} />
-          <text x={(PLOT.left + siteX) / 2} y={376} textAnchor="middle">H = {formatMetres(m.horizontal_distance_h)}</text>
+          <text x={(PLOT.left + siteX) / 2} y={376} textAnchor="middle">
+            {straight ? `Walked ${formatMetres(lastDist)}` : `H = ${formatMetres(m.horizontal_distance_h)}`}
+          </text>
         </g>
 
         {hover && (
@@ -121,7 +141,7 @@ export default function TransectProfile({ transect, label }) {
         )}
       </svg>
       <p className="profile-readout mono" aria-hidden="true">
-        {hover ? `${formatMetres(hover.dist)} from the peak · elevation ${formatMetres(hover.elev)}` : "Hover the profile for distance and elevation"}
+        {hover ? `${formatMetres(hover.dist)} along the path from the peak · elevation ${formatMetres(hover.elev)}` : "Hover the profile for distance and elevation"}
       </p>
     </div>
   );

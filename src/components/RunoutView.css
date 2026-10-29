@@ -72,3 +72,34 @@
 .path-figure:last-child { border-bottom: none; }
 .path-figure dt { font-size: 14px; }
 .path-figure dd { margin: 0; font-size: 16px; text-align: right; }
+.runout-key-jump {
+  width: 18px;
+  height: 0;
+  border-top: 2.5px dashed var(--color-profile-line);
+}
+
+.reach-bars { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.reach-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+}
+.reach-name { grid-column: 1 / -1; }
+.reach-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--color-track);
+}
+.reach-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+}
+.reach-fill-h { background: var(--color-accent); }
+.reach-fill-reach {
+  background: color-mix(in oklch, var(--color-danger) 25%, transparent);
+  border-right: 2px dashed var(--color-danger-line);
+}
+.reach-value { min-width: 4.5em; text-align: right; color: var(--color-text-high); }

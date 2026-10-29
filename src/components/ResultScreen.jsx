@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   displayVerdict, slopeRules, slopeCoverage, formatPct, formatMetres,
-  transectsOf, noRunoutSource, searchRadius, toneOf, runoutSafeNeedsCheck,
+  transectsOf, noRunoutSource, searchRadius, toneOf, runoutSafeNeedsCheck, straightLineH,
 } from "../lib/assessment";
 import { SLOPE_STATUS } from "../constants/status";
 import AppHeader from "./AppHeader";
@@ -38,6 +38,11 @@ function runoutSentence(dep) {
     return <>No higher ground {radius === null ? "near the lot" : <>within <strong className="mono">{formatMetres(radius)}</strong></>}, so no debris path reaches the lot.</>;
   }
   const m = transects[0].metrics;
+  if (straightLineH(dep)) {
+    return (
+      <>The lot's edge is <strong className="mono">{formatMetres(m.horizontal_distance_h)}</strong> in a straight line from the worst peak; debris can travel <strong className="mono">{formatMetres(m.required_runout_3x)}</strong>.</>
+    );
+  }
   return (
     <>Along eil-calc's path, the lot is <strong className="mono">{formatMetres(m.horizontal_distance_h)}</strong> from the worst peak; debris can travel <strong className="mono">{formatMetres(m.required_runout_3x)}</strong>.</>
   );

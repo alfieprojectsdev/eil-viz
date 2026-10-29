@@ -18,3 +18,4 @@
 .profile-hover circle { fill: var(--color-text-high); }
 .profile-readout { min-height: 20px; font-size: 13px; color: var(--color-text-low); }
 @media print { .profile-readout { display: none; } }
+.profile-jump { fill: none; stroke: var(--color-profile-line); stroke-width: 2.5; stroke-dasharray: 6 5; }
