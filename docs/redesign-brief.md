@@ -54,13 +54,13 @@ Not available without a backend change: coverage fractions per slope band, parce
 
 ## Questions only Alfie can answer
 
-Still open. The design canvas made a guess for each and the implementation follows those guesses: a Print report button with a light print stylesheet, dark theme only, desktop first, no map, and the sidebar replaced by a New assessment screen.
+The design canvas made a guess for each and the implementation (PR #4) follows those guesses: a Print report button with a light print stylesheet, dark theme only, desktop first, no map, and the sidebar replaced by a New assessment screen. Alfie answered them on 2026-10-28:
 
-- Should a result be printable or exportable as a certificate or report?
-- Is a light theme or a mobile/tablet layout wanted?
-- Should the parcel be shown on a map? That needs offline tiles or a DEM hillshade from eil-calc.
-- Is the sidebar still needed when PHAST is the usual entry point?
-- What do assessors currently do with the result: screenshot it, copy numbers, file it somewhere?
+- Should a result be printable or exportable as a certificate or report? Not yet. A certificate or report export waits for an explicit feature request.
+- Is a light theme or a mobile/tablet layout wanted? Neither.
+- Should the parcel be shown on a map? Not necessarily. It depends on whether the runout paths get drawn on the parcel, which isn't decided.
+- Is the sidebar still needed when PHAST is the usual entry point? Manual entry stays. PHAST became the usual entry point by accident; eil-viz and eil-calc are meant to stay independent of PHAST. The New assessment screen covers this.
+- What do assessors currently do with the result? Screenshot it, for now. This ties to the first answer: a report export would replace the screenshot.
 
 ## Plan
 
