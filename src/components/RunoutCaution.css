@@ -1,0 +1,22 @@
+.runout-caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 2px dashed var(--color-review);
+  background: color-mix(in oklch, var(--color-review) 10%, transparent);
+  color: var(--color-review-text);
+}
+.runout-caution svg { flex: none; margin-top: 2px; }
+.runout-caution-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--color-text-high);
+}
+.runout-caution-title { font-weight: 600; color: var(--color-review-text); }
+
+@media print {
+  .runout-caution { break-inside: avoid; }
+}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   displayVerdict, slopeRules, slopeCoverage, formatPct, formatMetres,
-  transectsOf, noRunoutSource, searchRadius, toneOf,
+  transectsOf, noRunoutSource, searchRadius, toneOf, runoutSafeNeedsCheck,
 } from "../lib/assessment";
 import { SLOPE_STATUS } from "../constants/status";
 import AppHeader from "./AppHeader";
@@ -9,6 +9,7 @@ import VerdictStamp from "./VerdictStamp";
 import StatusBadge from "./StatusBadge";
 import SlopeView from "./SlopeView";
 import RunoutView from "./RunoutView";
+import RunoutCaution from "./RunoutCaution";
 import { PrintIcon } from "./Icons";
 import "./ResultScreen.css";
 
@@ -38,7 +39,7 @@ function runoutSentence(dep) {
   }
   const m = transects[0].metrics;
   return (
-    <>The lot is <strong className="mono">{formatMetres(m.horizontal_distance_h)}</strong> from the worst peak; debris can travel <strong className="mono">{formatMetres(m.required_runout_3x)}</strong>.</>
+    <>Along eil-calc's path, the lot is <strong className="mono">{formatMetres(m.horizontal_distance_h)}</strong> from the worst peak; debris can travel <strong className="mono">{formatMetres(m.required_runout_3x)}</strong>.</>
   );
 }
 
@@ -80,6 +81,12 @@ export default function ResultScreen({ result, onNewAssessment }) {
             <PrintIcon size={18} />Print report
           </button>
         </div>
+
+        {runoutSafeNeedsCheck(dep) && (
+          <RunoutCaution title="The runout pass isn't confirmed">
+            eil-calc measures the distance H along its computed downhill path. The PHIVOLCS method measures a straight horizontal line from the peak to the edge of the lot, which can be much shorter. Before relying on this result, measure that line in Google Earth for each path and check that it's more than 3 × ΔE.
+          </RunoutCaution>
+        )}
 
         <div className="check-cards" role="tablist" aria-label="Checks">
           {cards.map(c => (

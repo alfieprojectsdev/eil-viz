@@ -215,6 +215,7 @@ eil-viz/
 │   │   ├── SlopeView.jsx       # Heatmap card, legend, coverage bars, figures
 │   │   ├── SlopeHeatmap.jsx    # Canvas heatmap of _viz_grid with hover readout
 │   │   ├── CoverageBar.jsx     # One coverage share against its limit
+│   │   ├── RunoutCaution.jsx   # Interim note: confirm H with a straight line to the lot edge
 │   │   ├── RunoutView.jsx      # Path buttons, profile, path verdict and figures
 │   │   ├── TransectProfile.jsx # SVG elevation profile for one path
 │   │   └── Icons.jsx           # Inline SVG icons
@@ -241,6 +242,7 @@ eil-viz/
 
 ## Known limitations
 
+- The runout check's distance H is measured by eil-calc along its computed downhill path. The PHIVOLCS method measures a straight horizontal line from the source to the edge of the lot, which can be much shorter; on eil-calc's test fixtures every path that passed fails under the straight line. Until eil-calc's rule is settled, every runout SAFE result and SAFE path carries a caution telling the assessor to measure that line in Google Earth (`RunoutCaution`). The no-source pass doesn't, because it rests on the search radius rather than H.
 - `?geo=` is still accepted for PHAST builds that predate `#geo=`. Drop it one PHAST release after the switch. Until then a `?geo=` parcel still reaches any proxy in front of nginx, and nginx's error log, which quotes the request line when a request fails.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.

@@ -1,5 +1,6 @@
 import { transectsOf, noRunoutSource, searchRadius, formatMetres } from "../lib/assessment";
 import TransectProfile from "./TransectProfile";
+import RunoutCaution from "./RunoutCaution";
 import "./RunoutView.css";
 
 function Explainer() {
@@ -8,7 +9,7 @@ function Explainer() {
       <summary>How the runout check works</summary>
       <div className="explainer-body">
         <p>eil-calc walks uphill from the lot to nearby peaks, then follows the steepest way back down. For each path, debris is assumed to travel up to three times the drop (ΔE) horizontally.</p>
-        <p>A path is SAFE if the lot is farther than that from the peak (H &gt; 3 × ΔE), otherwise PRONE. Up to three of the most threatening paths are shown; any PRONE path fails the check.</p>
+        <p>A path is SAFE if the lot is farther than that from the peak (H &gt; 3 × ΔE), otherwise PRONE. eil-calc measures H along the path it walked, not in a straight line. Up to three of the most threatening paths are shown; any PRONE path fails the check.</p>
       </div>
     </details>
   );
@@ -42,7 +43,7 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
     ["Peak elevation", formatMetres(m.elevation_peak)],
     ["Lot elevation", formatMetres(m.elevation_site)],
     ["Drop, ΔE", formatMetres(m.delta_e)],
-    ["Distance, H", formatMetres(m.horizontal_distance_h)],
+    ["Distance along path, H", formatMetres(m.horizontal_distance_h)],
     ["Debris reach, 3 × ΔE", formatMetres(m.required_runout_3x)],
   ];
 
@@ -96,6 +97,12 @@ export default function RunoutView({ dep, pathIndex, onSelectPath }) {
             H {formatMetres(m.horizontal_distance_h)} {compliant ? ">" : "≤"} 3 × ΔE {formatMetres(m.required_runout_3x)}
           </span>
         </section>
+
+        {compliant && (
+          <RunoutCaution title="Check this distance">
+            Measure the straight horizontal line from this peak (elevation {formatMetres(m.elevation_peak)}) to the edge of the lot in Google Earth. The path is only SAFE if that line is more than {formatMetres(m.required_runout_3x)}.
+          </RunoutCaution>
+        )}
 
         <section className="card path-figures" aria-label="Path figures">
           <dl>
