@@ -7,14 +7,28 @@
 # the service name (backend:8000); standalone it might be 127.0.0.1:8000 or a
 # host address. The Dockerfile sets the default.
 
+# nginx's default "main" format logs $request, the full request line, so a
+# parcel PHAST sent in ?geo= would land in the container log. This logs the
+# path without the query string. The referer is dropped too: requests the page
+# makes carry its own URL there, ?geo= included. $uri isn't used because
+# try_files and index rewrite it to /index.html before the log is written.
+map $request_uri $request_path {
+    ~^(?<path>[^?]*) $path;
+}
+log_format eil_noquery '$remote_addr - $remote_user [$time_local] '
+                       '"$request_method $request_path $server_protocol" $status $body_bytes_sent '
+                       '"$http_user_agent" "$http_x_forwarded_for"';
+
 server {
     listen 80;
     server_name localhost;
 
+    access_log /var/log/nginx/access.log eil_noquery;
+
     root /usr/share/nginx/html;
     index index.html;
 
-    # Serve static frontend files (React router support)
+    # Serve static files; any other path gets index.html.
     location / {
         try_files $uri $uri/ /index.html;
     }

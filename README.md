@@ -77,7 +77,9 @@ VITE_DEV_API_TARGET=http://192.168.1.10:8000 npm run dev
 3. Paste a GeoJSON Polygon (or a Feature or FeatureCollection containing one) into **Parcel boundary**. The line under the box says whether a polygon was found.
 4. Click **Run assessment**.
 
-The app can also be opened from the PHAST Chrome extension (Map Tools → EIL Analysis). PHAST base64-encodes the drawn parcel into a `?geo=` query parameter; on load, `App.jsx` decodes it, strips it from the URL and runs the assessment, starting on the running screen.
+The app can also be opened from the PHAST Chrome extension (Map Tools → EIL Analysis). PHAST base64-encodes the drawn parcel into a `#geo=` fragment; on load, `App.jsx` decodes it, strips it from the URL and runs the assessment, starting on the running screen. The fragment never leaves the browser, so the parcel stays out of nginx's and any proxy's logs. The parcel is read only when the page loads, so PHAST has to open a new tab rather than change the fragment of an open one.
+
+Older PHAST builds send a `?geo=` query parameter instead, without URL-encoding the base64. The app still reads it and turns the spaces `URLSearchParams` makes of `+` back into `+`. The nginx access log uses a format without query strings or referers, so those parcels don't reach the container log either.
 
 ## Deployment (Docker)
 
@@ -224,7 +226,7 @@ eil-viz/
 │   │   ├── geojson.js          # Pulls the Polygon out of pasted GeoJSON
 │   │   ├── slopeColor.js       # Slope → colour, between the --color-slope-* tokens
 │   │   └── tokens.js           # Reads --color-* tokens for canvas, which takes plain colour strings
-│   ├── App.jsx                 # Screen state, ?geo= handling, cancel
+│   ├── App.jsx                 # Screen state, #geo= handling, cancel
 │   ├── index.css               # Design tokens (--color-*), fonts, shared button/card styles, print tokens
 │   └── main.jsx                # React mount point
 ├── fixtures/responses/      # Real eil-calc responses for manual checks (see Fixtures)
@@ -239,6 +241,7 @@ eil-viz/
 
 ## Known limitations
 
+- `?geo=` is still accepted for PHAST builds that predate `#geo=`. Drop it one PHAST release after the switch. Until then a `?geo=` parcel still reaches any proxy in front of nginx, and nginx's error log, which quotes the request line when a request fails.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
 - The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's labels get small there.
