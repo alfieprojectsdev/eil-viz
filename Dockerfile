@@ -10,9 +10,6 @@ RUN npm ci
 
 # Copy source and build the Vite React app
 COPY . .
-# Empty base URL => the SPA fetches a relative /api/..., so one artifact works
-# behind any hostname or port without a rebuild. See App.jsx.
-ENV VITE_API_URL=""
 RUN npm run build
 
 # Serve stage

@@ -75,13 +75,13 @@ export async function assess(geometry, signal) {
   const cancel = () => controller.abort();
   signal.addEventListener("abort", cancel);
 
-  // Relative by default, so one build artifact works at every tier: dev
-  // server, LAN host, internal DNS name. In dev, Vite proxies /api to the
-  // backend; in production the reverse proxy does. Set VITE_API_URL only to
-  // point a build at some other origin.
-  const apiBase = import.meta.env.VITE_API_URL ?? "";
+  // Always relative, so one build artifact works at every tier: dev server,
+  // LAN host, internal DNS name. In dev, Vite proxies /api to the backend; in
+  // production the reverse proxy does. There's deliberately no build-time
+  // override: a stray .env with VITE_API_URL once made a gps3 build POST to
+  // each assessor's own localhost.
   try {
-    const response = await fetch(`${apiBase}/api/v1/assess`, {
+    const response = await fetch("/api/v1/assess", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
