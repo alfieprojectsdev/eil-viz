@@ -1,0 +1,9 @@
+# Kept out of the build context: local env files (may hold credentials or
+# settings meant for one machine), host-built dependencies and output that the
+# image rebuilds itself.
+.env
+.env.*
+node_modules
+dist
+.git
+.claude

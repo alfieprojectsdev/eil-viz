@@ -64,7 +64,7 @@ To point the dev server at a backend on another machine:
 VITE_DEV_API_TARGET=http://192.168.1.10:8000 npm run dev
 ```
 
-`VITE_API_URL` is a build-time escape hatch: if set, the request goes to `${VITE_API_URL}/api/v1/assess` instead of the relative path. You'd then need eil-calc's CORS allow-list to include this app's origin. Leave it unset unless you have a reason.
+The production build always requests the relative `/api/v1/assess`; there is no setting to point it at another origin. Whatever serves `dist/` has to forward `/api/` to eil-calc. Builds before this change honoured `VITE_API_URL`, so delete it from any old `.env` file.
 
 ## Running with eil-calc
 
@@ -83,7 +83,7 @@ Older PHAST builds send a `?geo=` query parameter instead, without URL-encoding 
 
 ## Deployment (Docker)
 
-The `Dockerfile` builds the app with `VITE_API_URL=""` and serves `dist/` from `nginx:alpine`. At container start the nginx image renders `nginx.conf.template`, substituting only `EIL_API_UPSTREAM` (default `backend:8000`, which suits a compose service named `backend`).
+The `Dockerfile` builds the app and serves `dist/` from `nginx:alpine`. At container start the nginx image renders `nginx.conf.template`, substituting only `EIL_API_UPSTREAM` (default `backend:8000`, which suits a compose service named `backend`).
 
 ```bash
 docker build -t eil-viz .
