@@ -1,10 +1,10 @@
-import { transectsOf, noRunoutSource, searchRadius, formatMetres, straightLineH } from "../lib/assessment";
+import { transectsOf, noRunoutSource, searchRadius, formatMetres, straightLineH, finite } from "../lib/assessment";
 import TransectProfile from "./TransectProfile";
 import RunoutCaution from "./RunoutCaution";
 import "./RunoutView.css";
 
 function finiteMetres(v) {
-  return typeof v === "number" && Number.isFinite(v) ? formatMetres(v) : null;
+  return finite(v) === null ? null : formatMetres(v);
 }
 
 function Explainer({ straight }) {

@@ -21,7 +21,7 @@ export function toneOf(status) {
   return TONE[status] ?? "danger";
 }
 
-function finite(v) {
+export function finite(v) {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
