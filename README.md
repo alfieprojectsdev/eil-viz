@@ -111,14 +111,14 @@ phase_1_compliance
   overall_status               "CERTIFIED SAFE" | "MANUAL REVIEW REQUIRED" | "NOT CERTIFIED" → verdict
   slope_stability
     metrics.max_slope_degrees, metrics.avg_slope_degrees
-    metrics.coverage_susceptible, metrics.coverage_flag            fractions 0-1 (eil-calc a85ec01+)
+    metrics.coverage_susceptible, metrics.coverage_flag            fractions 0-1 (eil-calc 04c6a1d+)
     assessment.status          "SAFE" | "FLAG FOR REVIEW" | "SUSCEPTIBLE"
-    assessment.coverage_limit_susceptible, coverage_limit_flag     0.015, 0.10 (eil-calc a85ec01+)
-    assessment.threshold_flag_deg, threshold_susceptible_deg       14, 16 (eil-calc 2333ef8+)
+    assessment.coverage_limit_susceptible, coverage_limit_flag     0.015, 0.10 (eil-calc 04c6a1d+)
+    assessment.threshold_flag_deg, threshold_susceptible_deg       14, 16 (eil-calc 84daae6+)
     _viz_grid                  2-D array of slope degrees; null outside the parcel
   depositional_hazard
     assessment.status          "SAFE (Beyond Runout)" | "PRONE (Within Runout Zone)"
-    assessment.no_source_found true only for the no-peak fallback (eil-calc 2333ef8+)
+    assessment.no_source_found true only for the no-peak fallback (eil-calc 84daae6+)
     assessment.search_radius_m 1000 today; quoted in the no-peak wording
     _viz_transects[]           up to 3, worst first
       metrics                  elevation_peak, elevation_site, delta_e, horizontal_distance_h, required_runout_3x
@@ -138,7 +138,7 @@ The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_
 
 ## Fixtures
 
-`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at b58782c. Each file is `{ request, status_code, response }`:
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at a1c4cde. Each file is `{ request, status_code, response }`:
 
 | File | Outcome |
 |---|---|

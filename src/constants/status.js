@@ -6,7 +6,7 @@ export const SLOPE_THRESHOLDS = {
   susceptible: 16,
 };
 
-// Coverage-fraction limits. Fallback only, as above: eil-calc a85ec01 and
+// Coverage-fraction limits. Fallback only, as above: eil-calc 04c6a1d and
 // later report them as assessment.coverage_limit_*. A parcel is SUSCEPTIBLE
 // if more than `susceptible` of its pixels are steeper than the susceptible
 // threshold; FLAG if more than `flag` fall in the flag band. Fractions (0–1).
