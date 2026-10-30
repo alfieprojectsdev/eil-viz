@@ -10,6 +10,7 @@ Built with [Vite 7](https://vitejs.dev/) and React 19. Charts are plain canvas a
 - Accepts a GeoJSON Feature, a FeatureCollection (the first Polygon feature is used, so a leading LineString is skipped) or a bare Polygon geometry. The entry screen checks the GeoJSON as you type and won't send anything it can't parse.
 - The verdict comes first, with one sentence per check giving the numbers that decided it. CERTIFIED SAFE, MANUAL REVIEW REQUIRED and NOT CERTIFIED differ in border style, fill and icon as well as colour, and anything unrecognised shows as NOT CERTIFIED.
 - Slope heatmap drawn on a canvas from `_viz_grid`, with the coverage shares (eil-calc `coverage_susceptible` / `coverage_flag`) drawn as bars against their limits. The colour scale jumps in lightness at 14° and 16°.
+- Plan view (SVG, north up) of the runout paths: lot outline, peaks, each path coloured and labelled by verdict, H as a straight line to the lot edge with the 3×ΔE mark, and contours underneath. It's drawn from eil-calc's own DEM fields, with no map tiles. Clicking a path selects it. Slope classes are an optional layer, off by default.
 - Elevation profile (SVG) along each path in `_viz_transects`, with the straight jump that closes a stalled walk dashed. H is compared with the 3×ΔE debris reach in a pair of bars, or, for backends that measure H along the walk, as a shaded zone on the profile.
 - Cancel while running, and a 5-minute client-side limit to match nginx's proxy timeout.
 - Print report: printing lays out both checks on a light background.
@@ -129,7 +130,9 @@ phase_1_compliance
       straight_line_m          straight line from the peak to the lot's lowest point (eil-calc 328408b+)
 ```
 
-The response also carries fields the UI ignores for now: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode; the footer says so if it isn't), each transect's `threat_ratio`, and the plan-view fields from eil-calc 328408b (`_viz_parcel`, `_viz_contours`, `_viz_site`, `_viz_grid_bounds`, each transect's `peak`, `edge_point` and slopes).
+The response also carries fields the UI ignores for now: `final_decision` (always `"PENDING"`), `phase_2_scientific` (`null` in compliance mode; the footer says so if it isn't), each transect's `threat_ratio` and its `avg_slope_deg` / `max_slope_deg`.
+
+The plan view reads eil-calc's georeferenced fields (328408b+, WGS84 `[lon, lat]`): `_viz_parcel` and `_viz_contours` on `phase_1_compliance`, `_viz_site` on `depositional_hazard`, `_viz_grid_bounds` on `slope_stability`, and each transect's `peak`, `edge_point` and per-point `lon`/`lat`. Without `_viz_parcel` there's no plan view, only the side profile.
 
 How H is measured depends on the backend. From eil-calc 7203893 it's the straight line from the peak to the nearest point on the lot's outline, and the transect carries `path_length_m`. Before that it ran along the walk. eil-viz checks for the `path_length_m` key (`straightLineH` in `src/lib/assessment.js`). With a straight-line H, the side profile shows the walk without the H bracket or debris-reach zone, which belong to a different axis, and a pair of bars compares H with 3 × ΔE. With a path-length H, SAFE results carry the caution described under Known limitations.
 
@@ -186,6 +189,7 @@ Answers "is the ground inside the lot too steep?"
 
 Answers "could a landslide from higher ground reach the lot?"
 
+- The plan view is the map, north up. The blue square is the lot and each triangle a peak eil-calc found. Each line is the path its walk took downhill, red for PRONE and green for SAFE, with a label such as "P1 PRONE" so the verdict doesn't rest on colour. The selected path is drawn heavier; clicking another selects it. The thin white line is H, the straight line from the peak to the nearest point of the lot's edge, and the short red bar across it marks 3 × ΔE from the peak. If that bar falls short of the lot the path is SAFE; if it reaches or passes the lot, PRONE. Grey lines are contours from the same elevation data eil-calc uses. When the lot is too small to see, a zoomed copy sits under the map. With no higher ground, the map shows the lot and the search area instead.
 - The chart is a side view of the steepest path from a nearby peak (white triangle, left) down to where it ends in the lot (blue square). The horizontal axis is distance walked along the path; the vertical axis is elevation. Hovering gives the distance and elevation under the pointer. A dashed last segment is a straight jump eil-calc added where the walk stalled on flat ground.
 - H is the straight horizontal line from the peak to the nearest edge of the lot. Two bars under the chart compare it with how far debris is assumed to travel, three times the drop (3 × ΔE). If H is longer the path is **SAFE (beyond runout)**; otherwise **PRONE (within runout zone)**. The figures list also gives the straight line to the lot's lowest point and the walked length, so H can be compared with what an assessor measures.
 - With an older eil-calc that measures H along the walk, the chart instead shades the debris reach in red up to a dashed line, marks H with a bracket under the axis, and SAFE results carry a caution to measure the straight line in Google Earth.
@@ -223,6 +227,7 @@ eil-viz/
 │   │   ├── CoverageBar.jsx     # One coverage share against its limit
 │   │   ├── RunoutCaution.jsx   # Note on path-length H: confirm with a straight line to the lot edge
 │   │   ├── RunoutView.jsx      # Path buttons, profile, path verdict and figures
+│   │   ├── PlanView.jsx        # Plan view: lot, paths, peaks, H and 3×ΔE, contours, zoomed lot
 │   │   ├── TransectProfile.jsx # SVG elevation profile for one path
 │   │   └── Icons.jsx           # Inline SVG icons
 │   ├── constants/
@@ -230,6 +235,7 @@ eil-viz/
 │   ├── lib/
 │   │   ├── api.js              # POST /api/v1/assess, timeout, error classification
 │   │   ├── assessment.js       # Status → tone, displayed verdict, thresholds from the response
+│   │   ├── geo.js              # Lon/lat → local metres and fitting for the plan view
 │   │   ├── geojson.js          # Pulls the Polygon out of pasted GeoJSON
 │   │   ├── slopeColor.js       # Slope → colour, between the --color-slope-* tokens
 │   │   └── tokens.js           # Reads --color-* tokens for canvas, which takes plain colour strings
@@ -253,8 +259,7 @@ eil-viz/
 - `?geo=` is still accepted for PHAST builds that predate `#geo=`. Drop it one PHAST release after the switch. Until then a `?geo=` parcel still reaches any proxy in front of nginx, and nginx's error log, which quotes the request line when a request fails.
 - Path points above 5000 m are replaced with the previous valid elevation, which can hide a corrupt DEM read.
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
-- The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's labels get small there.
+- The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's and plan view's labels get small there.
 - Dark theme only on screen. The light colours exist only in the print stylesheet.
-- No map: the heatmap is an abstract grid, because the app has no offline tiles and eil-calc returns no coordinates for the grid.
+- The slope view's heatmap is still an abstract grid without contours. The runout plan view has contours and can show the slope classes, but there's no satellite or map layer: nothing is fetched from a tile provider.
 - Cancel stops the browser waiting, but eil-calc runs the request to completion anyway (`assess_parcel` is a sync handler, so a client disconnect doesn't stop it).
-- `_viz_grid` is eil-calc's whole 500 m slope window, about 207 × 207 cells (roughly 250 KB) for a 31 m parcel's 49 values. The heatmap crops to the parcel, but the payload isn't trimmed.
