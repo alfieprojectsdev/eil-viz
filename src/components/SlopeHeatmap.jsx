@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { makeSlopeColor } from "../lib/slopeColor";
+import { svgPath, gridSummary } from "../lib/geo";
 import { readTokens } from "../lib/tokens";
 import "./SlopeHeatmap.css";
 
@@ -9,36 +10,22 @@ const MAX_CELL = 48;
 // canvas down to whatever space it gets, e.g. on a printed page.
 const FALLBACK_WIDTH = 720;
 
-// Rows and columns that hold parcel pixels, the steepest pixel, and the count.
-function summarise(grid) {
-  let minR = Infinity, maxR = -1, minC = Infinity, maxC = -1;
-  let max = null, count = 0;
-  grid.forEach((row, r) => {
-    row.forEach((v, c) => {
-      if (typeof v !== "number") return;
-      count++;
-      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
-      minC = Math.min(minC, c); maxC = Math.max(maxC, c);
-      if (!max || v > max.v) max = { v, r, c };
-    });
-  });
-  return count ? { minR, maxR, minC, maxC, max, count } : null;
-}
-
 function band(deg, rules) {
   if (deg <= rules.flagDeg) return "safe";
   if (deg <= rules.susceptibleDeg) return "review band";
   return "susceptible";
 }
 
-export default function SlopeHeatmap({ grid, rules }) {
+// `contours`, when given, is gridContours() output: lines in cell units,
+// drawn over the canvas in an SVG that shares its cropped cell box.
+export default function SlopeHeatmap({ grid, rules, contours = null }) {
   const wellRef = useRef(null);
   const canvasRef = useRef(null);
   const [width, setWidth] = useState(0);
   const [hovered, setHovered] = useState(null);
 
   const valid = Array.isArray(grid) && grid.every(Array.isArray);
-  const info = useMemo(() => (valid ? summarise(grid) : null), [grid, valid]);
+  const info = useMemo(() => (valid ? gridSummary(grid) : null), [grid, valid]);
 
   useEffect(() => {
     const el = wellRef.current;
@@ -115,6 +102,18 @@ export default function SlopeHeatmap({ grid, rules }) {
           onMouseMove={handleMove}
           onMouseLeave={() => setHovered(null)}
         />
+        {contours?.lines.length > 0 && (
+          <svg
+            className="heatmap-contours"
+            viewBox={`${info.minC} ${info.minR} ${cols} ${rows}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {contours.lines.map((l, k) => (
+              <path key={k} d={svgPath(l.cells)} className={l.index ? "heatmap-contour heatmap-contour-index" : "heatmap-contour"} />
+            ))}
+          </svg>
+        )}
         {hovered && (
           <div className="heatmap-tooltip" style={{ left: hovered.x + 14, top: hovered.y - 40 }}>
             <span className="mono text-high">{hovered.v.toFixed(1)}°</span>

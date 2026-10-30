@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { slopeRules, slopeCoverage, formatPct } from "../lib/assessment";
 import { slopeGradient, slopeScaleMax, slopeScalePosition } from "../lib/slopeColor";
 import { SLOPE_STATUS } from "../constants/status";
+import { contourLines, gridProjection, gridSummary } from "../lib/geo";
 import SlopeHeatmap from "./SlopeHeatmap";
 import CoverageBar from "./CoverageBar";
 import "./SlopeView.css";
@@ -77,9 +78,31 @@ function Coverage({ slope, rules }) {
   );
 }
 
-export default function SlopeView({ slope }) {
+// _viz_contours in the heatmap's cell units, keeping only lines whose extent
+// overlaps the lot's cells (gridSummary, the heatmap's crop). null when the
+// response has no contours or no usable grid bounds (eil-calc before 328408b).
+function gridContours(slope, contourSet) {
+  const grid = slope?._viz_grid;
+  const set = contourLines(contourSet);
+  const toCell = Array.isArray(grid) && grid.every(Array.isArray)
+    ? gridProjection(slope._viz_grid_bounds, grid.length, grid[0]?.length) : null;
+  if (!set || !toCell) return null;
+  const box = gridSummary(grid);
+  if (!box) return null;
+  const { minR, maxR, minC, maxC } = box;
+  const lines = set.lines.map(l => ({ cells: l.coords.map(toCell), index: l.index })).filter(l => {
+    const xs = l.cells.map(p => p[0]), ys = l.cells.map(p => p[1]);
+    return Math.max(...xs) >= minC && Math.min(...xs) <= maxC + 1
+      && Math.max(...ys) >= minR && Math.min(...ys) <= maxR + 1;
+  });
+  return { ...set, lines };
+}
+
+export default function SlopeView({ slope, contours: contourSet }) {
   // Stable across renders, so the heatmap doesn't redraw on every hover.
   const rules = useMemo(() => slopeRules(slope), [slope]);
+  const contours = useMemo(() => gridContours(slope, contourSet), [slope, contourSet]);
+  const [showContours, setShowContours] = useState(false);
   return (
     <>
       <section className="card result-figure" aria-labelledby="heatmap-heading">
@@ -87,8 +110,24 @@ export default function SlopeView({ slope }) {
           <h2 id="heatmap-heading">Slope across the lot</h2>
           <span className="text-low">One square per elevation pixel · hover for the exact slope</span>
         </div>
-        <SlopeHeatmap grid={slope._viz_grid} rules={rules} />
+        <SlopeHeatmap grid={slope._viz_grid} rules={rules} contours={showContours ? contours : null} />
         <SlopeLegend rules={rules} />
+        {contours && (
+          <div className="slope-contours">
+            <label className="slope-contours-toggle no-print">
+              <input type="checkbox" checked={showContours} onChange={e => setShowContours(e.target.checked)} />
+              Show contours
+            </label>
+            {showContours && (
+              <span className="key-item text-low">
+                <span className="slope-key-contour" />
+                {contours.lines.length === 0
+                  ? `No ${contours.interval === null ? "" : `${contours.interval} m `}contour crosses the lot.`
+                  : <>Every {contours.interval ?? "?"} m, {contours.source ? contours.source.replace(/^Contours from /, "from ") : "from eil-calc"}. The slope colours come from a smoothed copy, so the two can disagree slightly.</>}
+              </span>
+            )}
+          </div>
+        )}
       </section>
 
       <aside className="result-side">

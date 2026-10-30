@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { formatMetres, transectsOf, searchRadius, slopeRules, finite } from "../lib/assessment";
 import {
-  makeProjection, outerRing, isLonLat, lonLatOf, centroidOf, bboxOf, growBox, fitBox, niceLength, svgPath,
+  makeProjection, outerRing, lonLatOf, contourLines, centroidOf, bboxOf, growBox, fitBox, niceLength, svgPath,
 } from "../lib/geo";
 import { makeSlopeColor } from "../lib/slopeColor";
 import "./PlanView.css";
@@ -24,15 +24,8 @@ function buildModel(compliance, rules, withSlope) {
   const lot = ringLL.map(proj);
   const siteLL = lonLatOf(dep?._viz_site);
 
-  const contourSet = compliance._viz_contours;
-  const interval = finite(contourSet?.interval_m);
-  const contours = (Array.isArray(contourSet?.lines) ? contourSet.lines : [])
-    .filter(l => Array.isArray(l?.coordinates) && l.coordinates.length >= 2 && l.coordinates.every(isLonLat))
-    .map(l => ({
-      pts: l.coordinates.map(proj),
-      // Every fifth line is drawn heavier, as on a topographic map.
-      index: interval !== null && finite(l.elev_m) !== null && l.elev_m % (interval * 5) === 0,
-    }));
+  const contourSet = contourLines(compliance._viz_contours);
+  const contours = (contourSet?.lines ?? []).map(l => ({ pts: l.coords.map(proj), index: l.index }));
 
   const paths = transectsOf(dep).map((t, i) => {
     const pathLL = (t?.path ?? []).map(lonLatOf);
@@ -78,7 +71,7 @@ function buildModel(compliance, rules, withSlope) {
     }));
   }
 
-  return { lot, site: siteLL ? proj(siteLL) : null, contours, paths, cells, interval, source: contourSet?.source };
+  return { lot, site: siteLL ? proj(siteLL) : null, contours, paths, cells, interval: contourSet?.interval ?? null, source: contourSet?.source ?? null };
 }
 
 function Layers({ model, fr, selected, onSelect, searchM, detail }) {

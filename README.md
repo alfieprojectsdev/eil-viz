@@ -181,7 +181,7 @@ Shows the time elapsed and that the app gives up after 5 minutes. **Cancel** goe
 
 Answers "is the ground inside the lot too steep?"
 
-- The coloured grid is the lot, one square per elevation pixel. Blue-green is gentle (14° or less), amber is the review band (over 14° up to 16°), red is susceptible (over 16°, darkening to 25°). Each band starts with a jump in lightness, so they can be told apart without relying on colour. Hovering shows the exact slope of a square, and the steepest square has a white outline.
+- The coloured grid is the lot, one square per elevation pixel. Blue-green is gentle (14° or less), amber is the review band (over 14° up to 16°), red is susceptible (over 16°, darkening to 25°). Each band starts with a jump in lightness, so they can be told apart without relying on colour. Hovering shows the exact slope of a square, and the steepest square has a white outline. **Show contours** lays eil-calc's contour lines over the grid, every fifth one heavier. They come from the raw elevation data, while the colours come from a smoothed copy, so the two can disagree slightly.
 - **What decides the verdict** shows the share of the lot steeper than 16° and the share between 14° and 16°, each as a bar with a white mark at its limit (1.5% and 10%). The lot is **SUSCEPTIBLE** if more than 1.5% is steeper than 16°, otherwise **FLAG FOR REVIEW** if more than 10% is between 14° and 16°, otherwise **SAFE**. A few isolated steep pixels don't condemn an otherwise flat lot, which is why the steepest pixel alone doesn't decide.
 - Below that: the steepest pixel and the average slope.
 
@@ -261,5 +261,5 @@ eil-viz/
 - The UI still accepts the old single `_viz_transect` key from responses that predate `_viz_transects`.
 - The layout is designed for 1280 to 1440 px. It wraps down to phone width without scrolling sideways, but the runout chart's and plan view's labels get small there.
 - Dark theme only on screen. The light colours exist only in the print stylesheet.
-- The slope view's heatmap is still an abstract grid without contours. The runout plan view has contours and can show the slope classes, but there's no satellite or map layer: nothing is fetched from a tile provider.
+- There's no satellite or map layer under the slope grid or the plan view; nothing is fetched from a tile provider. Contours need eil-calc 328408b or later.
 - Cancel stops the browser waiting, but eil-calc runs the request to completion anyway (`assess_parcel` is a sync handler, so a client disconnect doesn't stop it).

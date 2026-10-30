@@ -118,7 +118,7 @@ export default function ResultScreen({ result, onNewAssessment }) {
       {/* Both stay mounted so the heatmap is already drawn when a printed
           report, which carries both checks, unhides the other panel. */}
       <main className="result-main" role="tabpanel" id="panel-slope" aria-labelledby="tab-slope" hidden={check !== "slope"}>
-        <SlopeView slope={slope} />
+        <SlopeView slope={slope} contours={compliance._viz_contours} />
       </main>
       <main className="result-main" role="tabpanel" id="panel-runout" aria-labelledby="tab-runout" hidden={check !== "runout"}>
         <RunoutView dep={dep} compliance={compliance} pathIndex={pathIndex} onSelectPath={setPathIndex} />
