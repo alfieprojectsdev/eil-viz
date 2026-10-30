@@ -39,3 +39,7 @@
 }
 .slope-figure span:first-child { font-size: 13px; }
 .slope-figure .mono { font-size: 28px; font-weight: 500; }
+.slope-contours { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; font-size: 14px; }
+.slope-contours-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.slope-contours-toggle input { width: 16px; height: 16px; accent-color: var(--color-accent); }
+.slope-key-contour { flex: none; width: 18px; height: 0; border-top: 1.5px solid var(--color-text-high); opacity: 0.7; }

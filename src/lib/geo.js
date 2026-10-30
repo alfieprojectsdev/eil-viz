@@ -73,3 +73,31 @@ export function niceLength(metres) {
 export function svgPath(points) {
   return points.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
 }
+
+// eil-calc's _viz_contours as { interval, source, lines: [{ coords, index }] }
+// with coords still [lon, lat]. Every fifth line is an index contour, drawn
+// heavier as on a topographic map. null when the response has none.
+export function contourLines(contourSet) {
+  const lines = (Array.isArray(contourSet?.lines) ? contourSet.lines : [])
+    .filter(l => Array.isArray(l?.coordinates) && l.coordinates.length >= 2 && l.coordinates.every(isLonLat));
+  if (!lines.length) return null;
+  const interval = Number.isFinite(contourSet.interval_m) ? contourSet.interval_m : null;
+  return {
+    interval,
+    source: typeof contourSet.source === "string" ? contourSet.source : null,
+    lines: lines.map(l => ({
+      coords: l.coordinates,
+      index: interval !== null && Number.isFinite(l.elev_m) && l.elev_m % (interval * 5) === 0,
+    })),
+  };
+}
+
+// [lon, lat] → [column, row] in _viz_grid's cells, from _viz_grid_bounds
+// (outer cell edges, row 0 north). null when the bounds can't be used.
+export function gridProjection(bounds, rows, cols) {
+  const b = bounds;
+  if (!b || b.row0_north !== true || ![b.west, b.south, b.east, b.north].every(Number.isFinite) || !rows || !cols) return null;
+  const dLon = (b.east - b.west) / cols;
+  const dLat = (b.north - b.south) / rows;
+  return ([lon, lat]) => [(lon - b.west) / dLon, (b.north - lat) / dLat];
+}
