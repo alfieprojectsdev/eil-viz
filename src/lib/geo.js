@@ -101,3 +101,19 @@ export function gridProjection(bounds, rows, cols) {
   const dLat = (b.north - b.south) / rows;
   return ([lon, lat]) => [(lon - b.west) / dLon, (b.north - lat) / dLat];
 }
+
+// Rows and columns that hold parcel pixels, the steepest pixel, and the count.
+export function gridSummary(grid) {
+  let minR = Infinity, maxR = -1, minC = Infinity, maxC = -1;
+  let max = null, count = 0;
+  grid.forEach((row, r) => {
+    row.forEach((v, c) => {
+      if (typeof v !== "number") return;
+      count++;
+      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+      minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+      if (!max || v > max.v) max = { v, r, c };
+    });
+  });
+  return count ? { minR, maxR, minC, maxC, max, count } : null;
+}

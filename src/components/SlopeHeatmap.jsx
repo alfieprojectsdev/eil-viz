@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { makeSlopeColor } from "../lib/slopeColor";
-import { svgPath } from "../lib/geo";
+import { svgPath, gridSummary } from "../lib/geo";
 import { readTokens } from "../lib/tokens";
 import "./SlopeHeatmap.css";
 
@@ -9,22 +9,6 @@ const MAX_CELL = 48;
 // Drawing width while the well is hidden (the inactive tab). CSS scales the
 // canvas down to whatever space it gets, e.g. on a printed page.
 const FALLBACK_WIDTH = 720;
-
-// Rows and columns that hold parcel pixels, the steepest pixel, and the count.
-function summarise(grid) {
-  let minR = Infinity, maxR = -1, minC = Infinity, maxC = -1;
-  let max = null, count = 0;
-  grid.forEach((row, r) => {
-    row.forEach((v, c) => {
-      if (typeof v !== "number") return;
-      count++;
-      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
-      minC = Math.min(minC, c); maxC = Math.max(maxC, c);
-      if (!max || v > max.v) max = { v, r, c };
-    });
-  });
-  return count ? { minR, maxR, minC, maxC, max, count } : null;
-}
 
 function band(deg, rules) {
   if (deg <= rules.flagDeg) return "safe";
@@ -41,7 +25,7 @@ export default function SlopeHeatmap({ grid, rules, contours = null }) {
   const [hovered, setHovered] = useState(null);
 
   const valid = Array.isArray(grid) && grid.every(Array.isArray);
-  const info = useMemo(() => (valid ? summarise(grid) : null), [grid, valid]);
+  const info = useMemo(() => (valid ? gridSummary(grid) : null), [grid, valid]);
 
   useEffect(() => {
     const el = wellRef.current;

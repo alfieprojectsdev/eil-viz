@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { slopeRules, slopeCoverage, formatPct } from "../lib/assessment";
 import { slopeGradient, slopeScaleMax, slopeScalePosition } from "../lib/slopeColor";
 import { SLOPE_STATUS } from "../constants/status";
-import { contourLines, gridProjection } from "../lib/geo";
+import { contourLines, gridProjection, gridSummary } from "../lib/geo";
 import SlopeHeatmap from "./SlopeHeatmap";
 import CoverageBar from "./CoverageBar";
 import "./SlopeView.css";
@@ -79,7 +79,7 @@ function Coverage({ slope, rules }) {
 }
 
 // _viz_contours in the heatmap's cell units, keeping only lines whose extent
-// overlaps the lot's cells (the heatmap crops to those). null when the
+// overlaps the lot's cells (gridSummary, the heatmap's crop). null when the
 // response has no contours or no usable grid bounds (eil-calc before 328408b).
 function gridContours(slope, contourSet) {
   const grid = slope?._viz_grid;
@@ -87,12 +87,9 @@ function gridContours(slope, contourSet) {
   const toCell = Array.isArray(grid) && grid.every(Array.isArray)
     ? gridProjection(slope._viz_grid_bounds, grid.length, grid[0]?.length) : null;
   if (!set || !toCell) return null;
-  let minR = Infinity, maxR = -1, minC = Infinity, maxC = -1;
-  grid.forEach((row, r) => row.forEach((v, c) => {
-    if (typeof v !== "number") return;
-    minR = Math.min(minR, r); maxR = Math.max(maxR, r);
-    minC = Math.min(minC, c); maxC = Math.max(maxC, c);
-  }));
+  const box = gridSummary(grid);
+  if (!box) return null;
+  const { minR, maxR, minC, maxC } = box;
   const lines = set.lines.map(l => ({ cells: l.coords.map(toCell), index: l.index })).filter(l => {
     const xs = l.cells.map(p => p[0]), ys = l.cells.map(p => p[1]);
     return Math.max(...xs) >= minC && Math.min(...xs) <= maxC + 1
