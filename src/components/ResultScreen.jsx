@@ -121,7 +121,7 @@ export default function ResultScreen({ result, onNewAssessment }) {
         <SlopeView slope={slope} />
       </main>
       <main className="result-main" role="tabpanel" id="panel-runout" aria-labelledby="tab-runout" hidden={check !== "runout"}>
-        <RunoutView dep={dep} pathIndex={pathIndex} onSelectPath={setPathIndex} />
+        <RunoutView dep={dep} compliance={compliance} pathIndex={pathIndex} onSelectPath={setPathIndex} />
       </main>
 
       <footer className="result-footer text-low">

@@ -103,3 +103,12 @@
   border-right: 2px dashed var(--color-danger-line);
 }
 .reach-value { min-width: 4.5em; text-align: right; color: var(--color-text-high); }
+
+.runout-figures {
+  flex: 999 1 640px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.runout-figures > .result-figure { flex: none; }
