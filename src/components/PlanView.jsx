@@ -232,11 +232,11 @@ export default function PlanView({ compliance, pathIndex, onSelectPath, noSource
             <span className="key-item"><span className="plan-key-lot" />Lot</span>
             {!noSource && (
               <>
-                <span className="key-item"><span className="runout-key-peak" />Peak</span>
+                <span className="key-item"><span className="runout-key-peak plan-key-peak" />Peak, in its path's colour</span>
                 <span className="key-item"><span className="plan-key-line plan-safe" />SAFE path</span>
                 <span className="key-item"><span className="plan-key-line plan-prone" />PRONE path</span>
                 {drawn.some(p => p.jumped) && <span className="key-item"><span className="runout-key-jump" />Straight jump where the walk stalled</span>}
-                <span className="key-item"><span className="plan-key-h" />H: straight line to the lot edge, with the 3 × ΔE mark</span>
+                {drawn.some(p => p.edge) && <span className="key-item"><span className="plan-key-h" />H: straight line to the lot edge, with the 3 × ΔE mark</span>}
               </>
             )}
             {noSource && radius !== null && <span className="key-item"><span className="plan-key-search" />Search area, {formatMetres(radius)} from the lot</span>}

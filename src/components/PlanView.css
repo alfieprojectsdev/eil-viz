@@ -80,3 +80,4 @@
 
 .plan-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .plan-toggle input { width: 16px; height: 16px; accent-color: var(--color-accent); }
+.plan-key-peak { border-bottom-color: var(--color-text-low); }
