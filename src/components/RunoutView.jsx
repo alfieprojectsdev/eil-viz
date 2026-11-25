@@ -75,18 +75,19 @@ export default function RunoutView({ dep, compliance, pathIndex, onSelectPath })
   const compliant = t.assessment?.is_compliant === true;
   const jumped = typeof t.closure_m === "number";
 
+  const hLineMin = siteIsHLineMinimum(dep);
   const figures = [
     ["Peak elevation", formatMetres(m.elevation_peak)],
-    siteIsHLineMinimum(dep)
+    hLineMin
       ? ["Lowest point on the H line", formatMetres(m.elevation_site)]
       : ["Lot elevation", formatMetres(m.elevation_site)],
-    ["Drop, ΔE", formatMetres(m.delta_e)],
+    [hLineMin ? "Drop to that point, ΔE" : "Drop, ΔE", formatMetres(m.delta_e)],
     [straight ? "Straight line to lot edge, H" : "Distance along path, H", formatMetres(m.horizontal_distance_h)],
     ["Debris reach, 3 × ΔE", formatMetres(m.required_runout_3x)],
   ];
   if (straight) {
     figures.push(
-      ["Straight line to lowest point", finiteMetres(t.straight_line_m)],
+      ["Straight line to the lot's lowest point", finiteMetres(t.straight_line_m)],
       ["Walked path length", finiteMetres(t.path_length_m)],
     );
   }
@@ -126,7 +127,7 @@ export default function RunoutView({ dep, compliance, pathIndex, onSelectPath })
             transect={t}
             straight={straight}
             label={straight
-              ? `Elevation along path ${index + 1}, ${formatMetres(m.delta_e)} drop. The lot's edge is ${formatMetres(m.horizontal_distance_h)} from the peak in a straight line; debris reach ${formatMetres(m.required_runout_3x)}.`
+              ? `Elevation along path ${index + 1}. Drop ${formatMetres(m.delta_e)}${hLineMin ? " to the lowest point on the H line" : ""}. The lot's edge is ${formatMetres(m.horizontal_distance_h)} from the peak in a straight line; debris reach ${formatMetres(m.required_runout_3x)}.`
               : `Elevation profile of path ${index + 1}: drop of ${formatMetres(m.delta_e)}, lot ${formatMetres(m.horizontal_distance_h)} from the peak, debris reach ${formatMetres(m.required_runout_3x)}.`}
           />
 
