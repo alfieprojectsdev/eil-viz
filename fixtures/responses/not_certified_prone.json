@@ -79,25 +79,26 @@
       "depositional_hazard": {
         "metrics": {
           "elevation_peak": 2439.0,
-          "elevation_site": 2184.0,
-          "delta_e": 255.0,
+          "elevation_site": 2187.0,
+          "delta_e": 252.0,
           "horizontal_distance_h": 645.7661718873599,
-          "required_runout_3x": 765.0
+          "required_runout_3x": 756.0
         },
         "assessment": {
           "status": "PRONE (Within Runout Zone)",
           "is_compliant": false,
           "no_source_found": false,
-          "search_radius_m": 1000.0
+          "search_radius_m": 1000.0,
+          "min_source_relief_m": 3.0
         },
         "_viz_transects": [
           {
             "metrics": {
               "elevation_peak": 2439.0,
-              "elevation_site": 2184.0,
-              "delta_e": 255.0,
+              "elevation_site": 2187.0,
+              "delta_e": 252.0,
               "horizontal_distance_h": 645.7661718873599,
-              "required_runout_3x": 765.0
+              "required_runout_3x": 756.0
             },
             "assessment": {
               "status": "PRONE (Within Runout Zone)",
@@ -730,7 +731,7 @@
                 "lat": 8.096969
               }
             ],
-            "threat_ratio": 1.184639321945526,
+            "threat_ratio": 1.170702388746167,
             "peak": {
               "lon": 124.897272,
               "lat": 8.101731,
@@ -749,10 +750,10 @@
           {
             "metrics": {
               "elevation_peak": 2420.0,
-              "elevation_site": 2184.0,
-              "delta_e": 236.0,
+              "elevation_site": 2187.0,
+              "delta_e": 233.0,
               "horizontal_distance_h": 634.1237244877109,
-              "required_runout_3x": 708.0
+              "required_runout_3x": 699.0
             },
             "assessment": {
               "status": "PRONE (Within Runout Zone)",
@@ -1157,7 +1158,7 @@
                 "lat": 8.096969
               }
             ],
-            "threat_ratio": 1.1165013587403176,
+            "threat_ratio": 1.1023085448580254,
             "peak": {
               "lon": 124.898179,
               "lat": 8.100778,

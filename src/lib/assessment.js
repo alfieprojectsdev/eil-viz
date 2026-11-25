@@ -89,6 +89,14 @@ export function noRunoutSource(dep, transects) {
     && (transects[0]?.path?.length ?? 0) <= 1;
 }
 
+// From eil-calc 8590df1, metrics.elevation_site is the lowest ground on the
+// straight H line from the peak to the lot edge, and ΔE runs to it; that
+// point can lie outside the lot. Before, it was the lot's lowest pixel.
+// 8590df1 also added assessment.min_source_relief_m, which tells them apart.
+export function siteIsHLineMinimum(dep) {
+  return Object.hasOwn(dep?.assessment ?? {}, "min_source_relief_m");
+}
+
 // eil-calc PR #10 onwards measures H as a straight line from the peak to the
 // nearest point on the lot's outline and reports the walked length as
 // path_length_m. Before it, H ran along the walk. The key's presence tells

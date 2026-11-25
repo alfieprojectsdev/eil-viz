@@ -50,7 +50,11 @@ export default function TransectProfile({ transect, label, straight = false }) {
     : Math.max(lastDist, m.horizontal_distance_h, m.required_runout_3x, 50)) * 1.08;
   const xStep = niceStep(span, 5);
   const xMax = Math.ceil(span / xStep) * xStep;
-  const elevs = points.map(p => p.elev).concat(m.elevation_peak, m.elevation_site);
+  // With a straight-line H the lot marker sits where the walk ends, at that
+  // point's own elevation. metrics.elevation_site belongs to the H line (from
+  // eil-calc 8590df1, its lowest point), not to this axis.
+  const siteElev = straight && points.length ? points[points.length - 1].elev : m.elevation_site;
+  const elevs = points.map(p => p.elev).concat(m.elevation_peak, siteElev);
   const lo0 = Math.min(...elevs), hi0 = Math.max(...elevs);
   const pad = Math.max(5, (hi0 - lo0) * 0.1);
   const yLo = lo0 - pad, yHi = hi0 + pad;
@@ -72,7 +76,7 @@ export default function TransectProfile({ transect, label, straight = false }) {
   const limitX = X(m.required_runout_3x);
   const limitRight = limitX > 640;
   const siteX = X(straight ? lastDist : m.horizontal_distance_h);
-  const siteY = Y(m.elevation_site);
+  const siteY = Y(siteElev);
   const peakX = X(0);
   const peakY = Y(m.elevation_peak);
 
@@ -122,7 +126,7 @@ export default function TransectProfile({ transect, label, straight = false }) {
         <text className="profile-label" x={peakX + 14} y={peakY - 2}>Peak {formatMetres(m.elevation_peak)}</text>
 
         <rect className="profile-site" x={siteX - 6} y={siteY - 6} width={12} height={12} />
-        <text className="profile-site-label" x={siteX - 12} y={siteY - 14} textAnchor="end">Lot {formatMetres(m.elevation_site)}</text>
+        <text className="profile-site-label" x={siteX - 12} y={siteY - 14} textAnchor="end">{straight ? "Path ends in lot" : "Lot"} {formatMetres(siteElev)}</text>
 
         <g className="profile-h">
           <line x1={PLOT.left} x2={siteX} y1={358} y2={358} />
