@@ -126,7 +126,7 @@ export default function TransectProfile({ transect, label, straight = false }) {
         <text className="profile-label" x={peakX + 14} y={peakY - 2}>Peak {formatMetres(m.elevation_peak)}</text>
 
         <rect className="profile-site" x={siteX - 6} y={siteY - 6} width={12} height={12} />
-        <text className="profile-site-label" x={siteX - 12} y={siteY - 14} textAnchor="end">Lot {formatMetres(siteElev)}</text>
+        <text className="profile-site-label" x={siteX - 12} y={siteY - 14} textAnchor="end">{straight ? "Path ends in lot" : "Lot"} {formatMetres(siteElev)}</text>
 
         <g className="profile-h">
           <line x1={PLOT.left} x2={siteX} y1={358} y2={358} />
