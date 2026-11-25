@@ -121,8 +121,10 @@ phase_1_compliance
     assessment.status          "SAFE (Beyond Runout)" | "PRONE (Within Runout Zone)"
     assessment.no_source_found true only for the no-peak fallback (eil-calc 84daae6+)
     assessment.search_radius_m 1000 today; quoted in the no-peak wording
+    assessment.min_source_relief_m 3.0; peaks less than this above the H line's lowest point aren't sources (eil-calc 8590df1+)
     _viz_transects[]           up to 3, worst first
       metrics                  elevation_peak, elevation_site, delta_e, horizontal_distance_h, required_runout_3x
+                               elevation_site: lowest point on the straight H line from 8590df1, the lot's lowest pixel before
       assessment               status, is_compliant
       path[]                   { dist_m, elev_m, lon, lat }; dist_m runs along the walk
       closure_m                straight jump closing a stalled walk, or null (eil-calc 328408b+)
@@ -146,7 +148,7 @@ The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_
 
 ## Fixtures
 
-`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at 7203893. Each file is `{ request, status_code, response }`:
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at 8590df1. Each file is `{ request, status_code, response }`:
 
 | File | Outcome |
 |---|---|
@@ -194,7 +196,7 @@ Answers "could a landslide from higher ground reach the lot?"
 - H is the straight horizontal line from the peak to the nearest edge of the lot. Two bars under the chart compare it with how far debris is assumed to travel, three times the drop (3 × ΔE). If H is longer the path is **SAFE (beyond runout)**; otherwise **PRONE (within runout zone)**. The figures list also gives the straight line to the lot's lowest point and the walked length, so H can be compared with what an assessor measures.
 - With an older eil-calc that measures H along the walk, the chart instead shades the debris reach in red up to a dashed line, marks H with a bracket under the axis, and SAFE results carry a caution to measure the straight line in Google Earth.
 - Up to three paths are shown as buttons, worst first. Any PRONE path fails the check.
-- The box on the right restates the comparison, for example `H 400 m ≤ 3 × ΔE 510 m`, and the list below gives peak and lot elevation, the drop, H, the debris reach and the other two distances.
+- The box on the right restates the comparison, for example `H 400 m ≤ 3 × ΔE 510 m`, and the list below gives the peak elevation, the lowest point on the H line (the lot's elevation with older eil-calc builds), the drop to it, H, the debris reach and the other two distances. The square on the side profile is where the walk ends in the lot, at that point's own elevation.
 
 ### Could not complete
 

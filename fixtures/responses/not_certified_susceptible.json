@@ -78,25 +78,26 @@
       "depositional_hazard": {
         "metrics": {
           "elevation_peak": 2388.0,
-          "elevation_site": 2277.0,
-          "delta_e": 111.0,
+          "elevation_site": 2296.0,
+          "delta_e": 92.0,
           "horizontal_distance_h": 207.26959032811448,
-          "required_runout_3x": 333.0
+          "required_runout_3x": 276.0
         },
         "assessment": {
           "status": "PRONE (Within Runout Zone)",
           "is_compliant": false,
           "no_source_found": false,
-          "search_radius_m": 1000.0
+          "search_radius_m": 1000.0,
+          "min_source_relief_m": 3.0
         },
         "_viz_transects": [
           {
             "metrics": {
               "elevation_peak": 2388.0,
-              "elevation_site": 2277.0,
-              "delta_e": 111.0,
+              "elevation_site": 2296.0,
+              "delta_e": 92.0,
               "horizontal_distance_h": 207.26959032811448,
-              "required_runout_3x": 333.0
+              "required_runout_3x": 276.0
             },
             "assessment": {
               "status": "PRONE (Within Runout Zone)",
@@ -705,7 +706,7 @@
                 "lat": 8.106946
               }
             ],
-            "threat_ratio": 1.606603262315761,
+            "threat_ratio": 1.3315991002977479,
             "peak": {
               "lon": 124.906296,
               "lat": 8.108941,

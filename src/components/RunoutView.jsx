@@ -1,4 +1,6 @@
-import { transectsOf, noRunoutSource, searchRadius, formatMetres, straightLineH, finite } from "../lib/assessment";
+import {
+  transectsOf, noRunoutSource, searchRadius, formatMetres, straightLineH, siteIsHLineMinimum, finite,
+} from "../lib/assessment";
 import TransectProfile from "./TransectProfile";
 import PlanView from "./PlanView";
 import RunoutCaution from "./RunoutCaution";
@@ -75,7 +77,9 @@ export default function RunoutView({ dep, compliance, pathIndex, onSelectPath })
 
   const figures = [
     ["Peak elevation", formatMetres(m.elevation_peak)],
-    ["Lot elevation", formatMetres(m.elevation_site)],
+    siteIsHLineMinimum(dep)
+      ? ["Lowest point on the H line", formatMetres(m.elevation_site)]
+      : ["Lot elevation", formatMetres(m.elevation_site)],
     ["Drop, ΔE", formatMetres(m.delta_e)],
     [straight ? "Straight line to lot edge, H" : "Distance along path, H", formatMetres(m.horizontal_distance_h)],
     ["Debris reach, 3 × ΔE", formatMetres(m.required_runout_3x)],
