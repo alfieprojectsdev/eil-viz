@@ -45,9 +45,14 @@ function buildModel(compliance, rules, withSlope) {
         tick = [peak[0] + (edge[0] - peak[0]) * k, peak[1] + (edge[1] - peak[1]) * k];
       }
     }
+    // eil-calc 6a52d06+: the lowest ground on the H line, which ΔE runs to.
+    // null on the no-source placeholder and when the line is all nodata.
+    const footLL = lonLatOf(t.foot_point);
     return {
       i, pts, peak, tick,
       edge: edgeLL ? proj(edgeLL) : null,
+      foot: footLL ? proj(footLL) : null,
+      footElev: finite(t.foot_point?.elev_m),
       jumped: typeof t.closure_m === "number",
       ok: t.assessment?.is_compliant === true,
       h: finite(m.horizontal_distance_h),
@@ -123,6 +128,22 @@ function Layers({ model, fr, selected, onSelect, searchM, detail }) {
                 <text x={t[0] + nx * 14} y={t[1] + ny * 14 + 4} textAnchor={t[0] > W - 140 ? "end" : "start"} className="plan-label">3 × ΔE {sel.reach !== null ? formatMetres(sel.reach) : ""}</text>
               </g>
             )}
+            {sel.foot && (() => {
+              const [fx, fy] = pt(sel.foot);
+              // Usually within a few metres of the edge; label it only when
+              // it stands clear of the edge dot.
+              const apart = Math.hypot(fx - e[0], fy - e[1]) > 28;
+              return (
+                <g className="plan-foot-point">
+                  <polygon points={`${fx},${fy - 5} ${fx + 5},${fy} ${fx},${fy + 5} ${fx - 5},${fy}`} />
+                  {detail && apart && sel.footElev !== null && (
+                    <text x={fx + nx * 12} y={fy + ny * 12 + 4} textAnchor={fx > W - 140 ? "end" : "start"} className="plan-label">
+                      Lowest {formatMetres(sel.footElev)}
+                    </text>
+                  )}
+                </g>
+              );
+            })()}
             {detail && sel.h !== null && (
               <text x={(a[0] + e[0]) / 2 - nx * 14} y={(a[1] + e[1]) / 2 - ny * 14 + 4} className="plan-label plan-h-label" textAnchor="middle">
                 H {formatMetres(sel.h)}
@@ -217,7 +238,7 @@ export default function PlanView({ compliance, pathIndex, onSelectPath, noSource
             <svg viewBox={`0 0 ${INSET} ${INSET}`} className="plan-inset-svg" aria-hidden="true">
               <Layers model={model} fr={insetFr} selected={sel} onSelect={null} searchM={null} detail={false} />
             </svg>
-            <figcaption className="text-low">The lot, zoomed in. The white dot is where H meets its edge; the small square is its lowest point.</figcaption>
+            <figcaption className="text-low">The lot, zoomed in. The white dot is where H meets its edge; the small square is its lowest point{drawn.some(p => p.foot) ? "; the diamond is the lowest point on the H line" : ""}.</figcaption>
           </figure>
         )}
         <div className="plan-foot-text">
@@ -230,6 +251,7 @@ export default function PlanView({ compliance, pathIndex, onSelectPath, noSource
                 <span className="key-item"><span className="plan-key-line plan-prone" />PRONE path</span>
                 {drawn.some(p => p.jumped) && <span className="key-item"><span className="runout-key-jump" />Straight jump where the walk stalled</span>}
                 {drawn.some(p => p.edge) && <span className="key-item"><span className="plan-key-h" />H: straight line to the lot edge, with the 3 × ΔE mark</span>}
+                {drawn.some(p => p.foot) && <span className="key-item"><span className="plan-key-foot" />Lowest point on the H line, which ΔE is measured to</span>}
               </>
             )}
             {noSource && radius !== null && <span className="key-item"><span className="plan-key-search" />Search area, {formatMetres(radius)} from the lot</span>}

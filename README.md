@@ -127,6 +127,7 @@ phase_1_compliance
                                elevation_site: lowest point on the straight H line from 8590df1, the lot's lowest pixel before
       assessment               status, is_compliant
       path[]                   { dist_m, elev_m, lon, lat }; dist_m runs along the walk
+      foot_point               { lon, lat, elev_m, dist_m } | null; the H line's lowest point, dist_m from the peak (eil-calc 6a52d06+)
       closure_m                straight jump closing a stalled walk, or null (eil-calc 328408b+)
       path_length_m            walked length; its presence means H is straight to the lot edge (eil-calc 7203893+)
       straight_line_m          straight line from the peak to the lot's lowest point (eil-calc 328408b+)
@@ -148,7 +149,7 @@ The UI never shows CERTIFIED SAFE unless both checks are also SAFE. If `overall_
 
 ## Fixtures
 
-`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at 8590df1. Each file is `{ request, status_code, response }`:
+`fixtures/responses/` holds real eil-calc responses, copied from eil-calc's `tests/fixtures/responses/` at 6a52d06. Each file is `{ request, status_code, response }`:
 
 | File | Outcome |
 |---|---|
@@ -191,7 +192,7 @@ Answers "is the ground inside the lot too steep?"
 
 Answers "could a landslide from higher ground reach the lot?"
 
-- The plan view is the map, north up. The blue square is the lot and each triangle a peak eil-calc found. Each line is the path its walk took downhill, red for PRONE and green for SAFE, with a label such as "P1 PRONE" so the verdict doesn't rest on colour. The selected path is drawn heavier; clicking another selects it. The thin white line is H, the straight line from the peak to the nearest point of the lot's edge, and the short red bar across it marks 3 × ΔE from the peak. If that bar falls short of the lot the path is SAFE; if it reaches or passes the lot, PRONE. Grey lines are contours from the same elevation data eil-calc uses. When the lot is too small to see, a zoomed copy sits under the map. With no higher ground, the map shows the lot and the search area instead.
+- The plan view is the map, north up. The blue square is the lot and each triangle a peak eil-calc found. Each line is the path its walk took downhill, red for PRONE and green for SAFE, with a label such as "P1 PRONE" so the verdict doesn't rest on colour. The selected path is drawn heavier; clicking another selects it. The thin white line is H, the straight line from the peak to the nearest point of the lot's edge, and the short red bar across it marks 3 × ΔE from the peak. A yellow diamond on it marks the lowest ground along H, which ΔE is measured to; it's usually beside the lot edge, so it's easiest to see in the zoomed copy. If that bar falls short of the lot the path is SAFE; if it reaches or passes the lot, PRONE. Grey lines are contours from the same elevation data eil-calc uses. When the lot is too small to see, a zoomed copy sits under the map. With no higher ground, the map shows the lot and the search area instead.
 - The chart is a side view of the steepest path from a nearby peak (white triangle, left) down to where it ends in the lot (blue square). The horizontal axis is distance walked along the path; the vertical axis is elevation. Hovering gives the distance and elevation under the pointer. A dashed last segment is a straight jump eil-calc added where the walk stalled on flat ground.
 - H is the straight horizontal line from the peak to the nearest edge of the lot. Two bars under the chart compare it with how far debris is assumed to travel, three times the drop (3 × ΔE). If H is longer the path is **SAFE (beyond runout)**; otherwise **PRONE (within runout zone)**. The figures list also gives the straight line to the lot's lowest point and the walked length, so H can be compared with what an assessor measures.
 - With an older eil-calc that measures H along the walk, the chart instead shades the debris reach in red up to a dashed line, marks H with a bracket under the axis, and SAFE results carry a caution to measure the straight line in Google Earth.
