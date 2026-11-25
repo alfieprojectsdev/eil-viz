@@ -131,8 +131,9 @@ function Layers({ model, fr, selected, onSelect, searchM, detail }) {
             {sel.foot && (() => {
               const [fx, fy] = pt(sel.foot);
               // Usually within a few metres of the edge; label it only when
-              // it stands clear of the edge dot.
-              const apart = Math.hypot(fx - e[0], fy - e[1]) > 28;
+              // it stands clear of the edge dot and the 3 × ΔE label, which
+              // sits on the same side of the line.
+              const apart = Math.hypot(fx - e[0], fy - e[1]) > 28 && (!t || Math.hypot(fx - t[0], fy - t[1]) > 60);
               return (
                 <g className="plan-foot-point">
                   <polygon points={`${fx},${fy - 5} ${fx + 5},${fy} ${fx},${fy + 5} ${fx - 5},${fy}`} />
