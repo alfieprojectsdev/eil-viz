@@ -118,6 +118,7 @@
             "closure_m": null,
             "straight_line_m": null,
             "edge_point": null,
+            "foot_point": null,
             "path_length_m": null,
             "avg_slope_deg": null,
             "max_slope_deg": null
